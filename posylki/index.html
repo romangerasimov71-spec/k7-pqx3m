@@ -1,0 +1,2188 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#1c1916">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Посылки">
+<meta name="robots" content="noindex,nofollow">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<style>*,*::before,*::after{box-sizing:border-box}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Сортировка посылок</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Russo+One&family=Rubik:wght@400;600&display=swap">
+<style>
+/* Layout: one full-height 9:16 stage, game drawn on canvas, HTML overlays for menus */
+:root{
+  --night:#1c1916; --cardboard:#d9a066; --ink:#3a2418;
+  --cream:#fff4e2; --orange:#ff8a2a; --gold:#ffc21f;
+  --display:"Russo One","Arial Black",system-ui,sans-serif;
+  --body:"Rubik",system-ui,-apple-system,sans-serif;
+  color-scheme:dark;
+}
+html{height:100%;box-sizing:border-box;background:var(--night)}
+body{height:100%;margin:0;background:var(--night);color:var(--cream);font-family:var(--body);overflow:hidden;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#wrap{height:100%;display:flex;justify-content:center}
+#stage{position:relative;height:100%;aspect-ratio:9/16;max-width:100%;overflow:hidden;background:#5f7a8c}
+canvas{display:block;touch-action:none}
+.panel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow-y:auto;
+  background:rgba(28,22,16,.62);padding:16px max(16px,env(safe-area-inset-left,0px)) 16px max(16px,env(safe-area-inset-right,0px))}
+.box{background:var(--cardboard);color:var(--ink);border:4px solid var(--ink);border-radius:14px;margin:auto 0;
+  padding:22px 20px 20px;max-width:340px;width:100%;box-shadow:0 8px 0 rgba(0,0,0,.35);position:relative;
+  display:flex;flex-direction:column;gap:12px;text-align:left}
+.box::before{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:46px;transform:translateX(-50%);
+  background:rgba(255,236,200,.35);border-left:2px dashed rgba(58,36,24,.25);border-right:2px dashed rgba(58,36,24,.25);pointer-events:none}
+.box>*{position:relative}
+.label{font-family:var(--body);font-weight:600;font-size:12px;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+h1{font-family:var(--display);font-weight:400;margin:0;line-height:1.05;text-wrap:balance;font-size:32px}
+p{margin:0;font-size:15px;line-height:1.45}
+.rules{display:grid;gap:6px;font-size:14px;line-height:1.35}
+.rules div{display:flex;gap:8px;align-items:flex-start}
+.dot{flex:none;width:14px;height:14px;border-radius:3px;border:2px solid var(--ink);margin-top:2px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{font-family:var(--display);font-size:19px;color:var(--ink);background:var(--orange);border:4px solid var(--ink);
+  border-radius:12px;padding:12px 16px;cursor:pointer;box-shadow:0 5px 0 var(--ink);flex:1}
+button:active{transform:translateY(4px);box-shadow:0 1px 0 var(--ink)}
+button:focus-visible{outline:3px solid var(--cream);outline-offset:3px}
+button.ghost{flex:none;background:var(--cream);font-size:15px;padding:12px 12px}
+.stamp{position:absolute;right:14px;top:14px;transform:rotate(8deg);border:3px solid #b5361f;color:#b5361f;
+  font-family:var(--display);font-size:13px;padding:3px 7px;border-radius:6px;opacity:.85}
+.levels{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.lv{font-family:var(--display);font-size:16px;padding:6px 0 4px;border-width:3px;border-radius:9px;box-shadow:0 3px 0 var(--ink);
+  background:var(--cream);display:flex;flex-direction:column;align-items:center;gap:1px;min-width:0}
+.lv small{font-family:var(--body);font-size:10px;letter-spacing:1px;color:#c9820f;line-height:1}
+.lv.boss{background:#ffb4a2}
+.lv.cur{background:var(--orange)}
+.lv:disabled{opacity:.4;cursor:default;box-shadow:none;transform:none}
+.stars{font-size:46px;line-height:1;letter-spacing:4px;color:var(--gold);-webkit-text-stroke:2px var(--ink);text-align:center}
+.stars .off{color:rgba(58,36,24,.25)}
+.big{font-family:var(--display);font-size:22px}
+.locHead{display:flex;align-items:center;gap:8px;font-family:var(--display);font-size:14px;margin:4px 0 6px;
+  padding:5px 8px;border:3px solid var(--ink);border-radius:9px;background:var(--lc);box-shadow:0 3px 0 rgba(58,36,24,.5)}
+#levels{display:flex;flex-direction:column;gap:6px}
+.locHead.shut{opacity:.7;filter:saturate(.6)}
+.lhName{display:flex;flex-direction:column;line-height:1.15}
+.lhName small{font-family:var(--body);font-weight:600;font-size:10px;letter-spacing:.06em;text-transform:uppercase;opacity:.75}
+.lv.boss:disabled{opacity:.6}
+.lv small{white-space:nowrap}
+#levels .levels{margin-bottom:6px}
+#infoCard{border-top:12px solid var(--lc,#d9a066)}
+.locBadge{display:flex;align-items:center;gap:10px}
+.locBadge span{font-size:38px;line-height:1}
+.twist{background:rgba(255,244,226,.65);border:2px dashed var(--ink);border-radius:9px;padding:8px 10px;font-size:14px;line-height:1.35}
+@media (prefers-reduced-motion:reduce){button:active{transform:none}}
+</style>
+
+</head>
+<body>
+<div id="wrap"><div id="stage">
+  <canvas id="game"></canvas>
+
+  <div class="panel" id="menu">
+    <div class="box">
+      <div class="stamp">ХРУПКОЕ</div>
+      <div class="label">Склад · зона сортировки</div>
+      <h1>Сортировка посылок</h1>
+      <p>50 уровней в 10 локациях: склады и пункты выдачи по очереди, от зоны приёма до Чёрной пятницы. Нажми на уровень, чтобы узнать, куда попадёшь.</p>
+      <div class="rules">
+        <div><span class="dot" style="background:#2a5bff"></span>Тащи коробку пальцем в тележку своего магазина — смотри на цвет скотча и наклейку.</div>
+        <div><span class="dot" style="background:#b5179e"></span>Полную тележку смахни пальцем вниз. Чем она тяжелее, тем дольше её разгружают (до 15 сек) — пока её нет, перекладывай посылки на ленте назад.</div>
+        <div><span class="dot" style="background:#2a6fd6"></span>На стеллажах лежат гаечные ключи (1–5 за уровень). Ключ на щиток — лента 10 сек едет медленнее. Каждый ключ одноразовый.</div>
+        <div><span class="dot" style="background:#e8402a"></span>Конвейер может сломаться: найди отвёртку на стеллаже и перетащи на щиток за 20 секунд.</div>
+        <div><span class="dot" style="background:#ff4d3d"></span>2 минуты на уровень. Звёзды = оставшиеся сердечки. Каждый 5-й уровень — босс.</div>
+      </div>
+      <div class="row">
+        <button id="playBtn" type="button">Играть уровень 1</button>
+        <button id="muteBtn" class="ghost" type="button">🔊 Звук</button>
+      </div>
+      <div id="levels"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="lvInfo" hidden>
+    <div class="box" id="infoCard">
+      <div class="label" id="infoLabel">Уровень 1</div>
+      <div class="locBadge"><span id="infoIcon">📦</span><h1 id="infoTitle">Склад</h1></div>
+      <p id="infoDesc"></p>
+      <div class="twist"><b>Что нового:</b> <span id="infoTwist"></span></div>
+      <div class="stars" id="infoStars"></div>
+      <p id="infoBest" style="text-align:center;font-size:13px"></p>
+      <div class="row"><button id="infoPlay" type="button">Играть</button></div>
+      <div class="row"><button id="infoBack" class="ghost" type="button" style="flex:1">Назад к уровням</button></div>
+    </div>
+  </div>
+
+  <div class="panel" id="result" hidden>
+    <div class="box">
+      <div class="label" id="resLabel">Уровень 1</div>
+      <h1 id="resTitle">Смена пройдена</h1>
+      <div class="stars" id="resStars"></div>
+      <p id="resInfo"></p>
+      <div class="row">
+        <button id="nextBtn" type="button">Играть уровень 2</button>
+      </div>
+      <div class="row">
+        <button id="retryBtn" class="ghost" type="button" style="flex:1">Ещё раз</button>
+        <button id="menuBtn" class="ghost" type="button" style="flex:1">Уровни</button>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<script>
+// ===== Настройки игры (все числа здесь) =====
+const CONFIG = {
+  brands: [
+    { id:'ozon', name:'OZON',   color:'#2a5bff', text:'#ffffff' },
+    { id:'wb',   name:'WB',     color:'#b5179e', text:'#ffffff' },
+    { id:'ya',   name:'Яндекс', color:'#ffd21f', text:'#2b1a10' },
+    { id:'av',   name:'Авито',  color:'#5fbf2a', text:'#ffffff' },
+  ],
+  sizes: [
+    { w:50, h:40, lift:0,    k:0.40,  damp:0.55, sag:0,  swing:0.5, shakeLift:0,   shakeHeld:0,   points:1, kg:[1,3]   },
+    { w:66, h:52, lift:0.35, k:0.14,  damp:0.74, sag:10, swing:1.0, shakeLift:2.2, shakeHeld:1.1, points:2, kg:[5,9]   },
+    { w:88, h:70, lift:0.80, k:0.050, damp:0.86, sag:26, swing:1.7, shakeLift:4.5, shakeHeld:3.0, points:3, kg:[15,25] },
+  ],
+  lives: 3,
+  levelTime: 120,
+  bossTime: 60,                    // босс-уровни короче: 1 минута
+  cartBonus: 5,                    // бонус за отправку полной тележки
+  unloadBase: 1.5, unloadPerKg: 0.2, unloadMax: 15,  // время разгрузки: 1.5 с + 0.2 с за каждый кг, не больше 15 с
+  cartInScale: 0.68,               // размер коробки в тележке относительно ленты
+  fullAt: 0.85,                    // заполнено на 85% высоты — «полная», пора смахнуть
+  overflowAt: 1.15,                // коробка торчит выше борта на 15% — перегруз, посылки вываливаются
+  repairTime: 20, repairBonus: 3,  // секунд на починку конвейера
+  helpersMin: 1, helpersMax: 5,    // гаечных ключей на стеллажах за уровень (одноразовые)
+  slowTime: 10, slowFactor: 0.45,  // ключ на щиток: лента едет медленнее 10 сек
+};
+
+// ===== 50 уровней в 10 локациях (склад и выдача чередуются, каждая следующая пара сложнее) =====
+const MAX_LEVEL = 50;
+const PVZ_DESC = 'К окнам выдачи приходят люди. Каждый называет номер своей посылки — найди её в тележках и отдай. Кто-то идёт в примерочную и может вернуть посылку: убери возврат в ящик «Возврат» или обратно в тележку.';
+const LOCATIONS = [
+  { id:'sklad',  mode:'sort',   icon:'📦', color:'#d9a066', name:'Склад · зона приёма',
+    desc:'Посылки едут по конвейеру. Разложи их по тележкам магазинов и вовремя отправляй полные.' },
+  { id:'pvz',    mode:'pickup', icon:'🛍️', color:'#7fd08a', name:'Пункт выдачи', desc: PVZ_DESC,
+    sign:'ПУНКТ ВЫДАЧИ ЗАКАЗОВ', wall:['#cfe3d6', '#eef3ea'], signColor:'#2f8f4e' },
+  { id:'night',  mode:'sort',   icon:'🌙', color:'#8fa3d9', name:'Склад · ночная смена', tint:'rgba(10,18,50,.42)',
+    desc:'Снова склад, но ночью: тележки меняются местами, конвейер ломается чаще, коробок больше.' },
+  { id:'sale',   mode:'pickup', icon:'🔥', color:'#ff9a7a', name:'Пункт выдачи · распродажа', flags:true,
+    desc:'Распродажа: очередь длиннее, клиенты торопятся. Ищи посылки быстро — за скорость дают чаевые.',
+    sign:'РАСПРОДАЖА · ВЫДАЧА', wall:['#f3d7cf', '#fbeee6'], signColor:'#d8432f' },
+  { id:'winter', mode:'sort',   icon:'❄️', color:'#bfe3f2', name:'Склад · зимний сезон', tint:'rgba(200,230,255,.22)',
+    desc:'Зимой посылок вдвое больше: тяжёлые коробки с подарками, лента быстрее, поломки дважды за смену.' },
+  { id:'ny',     mode:'pickup', icon:'🎄', color:'#e05a5a', name:'Пункт выдачи · Новый год', flags:true,
+    desc:'Все спешат за подарками перед праздником. Клиенты ждут меньше, примеряют чаще.',
+    sign:'С НОВЫМ ГОДОМ! · ВЫДАЧА', wall:['#dfe9f5', '#f4f8fc'], signColor:'#c0392b' },
+  { id:'hub',    mode:'sort',   icon:'🏭', color:'#f0b04a', name:'Сортировочный центр', tint:'rgba(255,150,40,.12)',
+    desc:'Большой хаб: два темпа ленты, частые перестановки тележек, много тяжёлых коробок.' },
+  { id:'peak',   mode:'pickup', icon:'⏰', color:'#9fd0ff', name:'Пункт выдачи · час пик',
+    desc:'Вечерний час пик: люди идут с работы, очередь не кончается. Держи стол для разбора свободным.',
+    sign:'ВЫДАЧА · ЧАС ПИК', wall:['#d6dcef', '#eef0f8'], signColor:'#2f62b3' },
+  { id:'rush',   mode:'sort',   icon:'🚨', color:'#ff6b5a', name:'Склад · аврал', tint:'rgba(255,40,30,.10)',
+    desc:'Аврал перед распродажей: самая быстрая лента, поломки и перестановки. Ключи на стеллажах — твоё спасение.' },
+  { id:'bf',     mode:'pickup', icon:'🖤', color:'#a9a9b8', name:'Пункт выдачи · Чёрная пятница', flags:true,
+    desc:'Финальная локация. Три окна, толпа клиентов и куча возвратов. Пройди 50-й уровень!',
+    sign:'ЧЁРНАЯ ПЯТНИЦА', wall:['#cfcfd8', '#e9e9ef'], signColor:'#1f1f26' },
+];
+LOCATIONS.forEach((l, i) => { l.idx = i; l.from = i * 5 + 1; l.to = i * 5 + 5; l.tier = Math.floor(i / 2); });
+const locOf = n => LOCATIONS.find(l => n >= l.from && n <= l.to) || LOCATIONS[LOCATIONS.length - 1];
+
+function levelDef(n){
+  const loc = locOf(n), step = (n - 1) % 5;
+  const d = loc.mode === 'sort' ? sortDef(loc.tier * 5 + step + 1) : pickupDef(loc.tier, step);
+  d.n = n; d.loc = loc; d.mode = loc.mode;
+  const twists = {
+    1:'Полную тележку смахни вниз — отправь', 2:'Тяжёлые коробки и поломка конвейера', 3:'Новая тележка: Авито', 4:'Лента едет быстрее',
+    6:'Пришли первые клиенты: найди посылку по номеру', 7:'Второе окно выдачи. Примерочная работает — жди возвратов', 8:'Новая тележка: Авито', 9:'Клиенты торопятся',
+    11:'Ночная смена: темно, лампы, первые перестановки скоро', 12:'Тележки меняются местами!',
+    16:'Распродажа: людей больше', 17:'Клиенты ждут меньше', 18:'Нужная коробка часто внизу — перекладывай',
+    21:'Зимний сезон: коробок больше', 23:'Подарки тяжёлые — береги спину', 26:'Новый год: все за подарками', 28:'Примеряют почти все',
+    31:'Сортировочный центр: быстрая лента', 33:'Тележки меняются каждые 20 секунд', 36:'Час пик: очередь не кончается', 38:'Клиенты ждут совсем мало',
+    41:'Аврал: самая быстрая лента', 43:'Две поломки и перестановки', 46:'Чёрная пятница начинается', 49:'Предпоследний рывок',
+  };
+  if (twists[n]) d.twist = twists[n];
+  if (d.boss) d.twist = n === MAX_LEVEL ? 'ФИНАЛ: чёрная пятница, три окна' : loc.mode === 'sort' ? `БОСС: два конвейера · ${loc.name}` : `БОСС: три окна · ${loc.name}`;
+  return d;
+}
+
+// Выдача: клиенты называют номер посылки, ты ищешь её в тележках
+function pickupDef(tier, j){
+  const boss = j === 4;
+  const d = {
+    boss, time: CONFIG.levelTime, mode: 'pickup',
+    carts: (j >= 2 || tier) ? 4 : 3,
+    windows: boss ? 3 : (j === 0 && !tier) ? 1 : 2,
+    patience: Math.max(15, 30 - tier * 3 - j * 2),            // сколько секунд клиент ждёт
+    arrive: Math.max(2.0, 5.5 - tier * 0.6 - j * 0.45),        // пауза между клиентами
+    boxesPerCart: boss ? 4 : 5,
+    tryOn: (tier === 0 && j === 0) ? 0.2 : Math.min(0.5, 0.33 + tier * 0.04),   // доля клиентов, идущих в примерочную
+    belt2: false, shuffle: 0, breaks: 0,
+    speedStart: 0, speedEnd: 0,
+    twist: 'Выдача посылок',
+  };
+  if (boss) { d.time = CONFIG.bossTime; d.arrive += 0.8; }
+  return d;
+}
+
+// Сортировка на складе. Каждый 5-й — босс (два конвейера). После босса темп сбрасывается и растёт заново.
+function sortDef(n){
+  const boss = n % 5 === 0;
+  const tier = Math.floor((n - 1) / 5);   // 0: уровни 1–5, 1: 6–10 ...
+  const step = (n - 1) % 5;               // 0..4 внутри блока
+  const d = {
+    n, boss, time: CONFIG.levelTime,
+    carts: n >= 3 ? 4 : 3,
+    speedStart: 34 + step*3.5 + tier*4,
+    speedEnd:   47 + step*6 + tier*6,
+    spawnStart: Math.max(1.8, 2.7 - step*0.14 - tier*0.12),
+    spawnEnd:   Math.max(1.3, 1.95 - step*0.1 - tier*0.08),
+    bigChance:  n === 1 ? 0 : Math.min(0.32, 0.1 + step*0.05 + tier*0.04),
+    mediumChance: 0.38,
+    belt2: boss,
+    belt2Spawn: [5.6 - tier*0.4, 4.0 - tier*0.3],
+    shuffle: (n >= 7) ? Math.max(18, 32 - tier*4) : 0,
+    breaks: n >= 8 ? 2 : n >= 2 ? 1 : 0,   // сколько раз за смену ломается конвейер
+    twist: '',
+  };
+  if (boss) { // босс идёт 1 минуту, коробок чуть меньше
+    d.time = CONFIG.bossTime; d.speedStart -= 6; d.speedEnd -= 8; d.bigChance = 0;
+    d.spawnStart += 0.6; d.spawnEnd += 0.5; d.belt2Spawn = d.belt2Spawn.map(v => v * 1.3);
+  }
+  const twists = { 1:'Полную тележку смахни вниз — отправь', 2:'Тяжёлые коробки и поломка конвейера', 3:'Новая тележка: Авито',
+                   4:'Лента едет быстрее', 6:'Передышка: темп снова спокойный', 7:'Тележки меняются местами!' };
+  d.twist = boss ? 'БОСС: два конвейера сразу' : (twists[n] || (d.shuffle ? 'Следи: тележки меняются местами' : 'Новая смена'));
+  return d;
+}
+
+// ===== Сохранение прогресса =====
+let progress = { unlocked: 1, stars: {}, best: {} };
+try { const s = JSON.parse(localStorage.getItem('parcelSortProgress') || 'null'); if (s && s.unlocked) progress = s; } catch (e) {}
+function saveProgress(){ try { localStorage.setItem('parcelSortProgress', JSON.stringify(progress)); } catch (e) {} }
+
+// ===== Состояние =====
+const stage = document.getElementById('stage');
+const cv = document.getElementById('game');
+const ctx = cv.getContext('2d');
+let W = 0, H = 0, u = 1, dpr = 1;
+const L = {};
+const belts = [ { y:0, dir:1, end:0 }, { y:0, dir:-1, end:0 } ];
+let bgCanvas = null;
+
+let mode = 'menu';
+let def = levelDef(1);
+let boxes = [], popups = [], carts = [];
+let held = null, pointer = { x: 0, y: 0 };
+let score = 0, lives = 3, streak = 0, sorted = 0, dropped = 0, elapsed = 0;
+let speed = 40, spawnTimer = 0, spawnTimer2 = 0, shuffleTimer = 0, beltPos = [0, 0];
+let flash = 0, shake = 0, overTimer = -1, clock = 0, lastBrand = -1, sameCount = 0;
+let broken = { active: false, t: 0, alarm: 0, puff: 0 }, breakQueue = [];
+const tool = { state: 'hidden', x: 0, y: 0, homeX: 0, homeY: 0, ang: 0, t: 0, sx: 0, sy: 0, tick: 0 };
+let toolHeld = false, cartDrag = null, particles = [];
+let helpers = [], heldHelper = null, slowT = 0;
+const slowK = () => slowT > 0 ? CONFIG.slowFactor : 1;
+
+// ===== Звук (синтез) =====
+let actx = null, muted = false, noiseBuf = null, hum = null;
+let out = null, htmlAudio = null;
+// Тихий WAV в цикле: на iPhone переводит звук в режим «медиа», и игра звучит даже на беззвучном
+function silentWavUrl(){
+  const n = 4410, buf = new ArrayBuffer(44 + n*2), v = new DataView(buf);
+  const w = (o, str) => { for (let i = 0; i < str.length; i++) v.setUint8(o + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n*2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 44100, true); v.setUint32(28, 88200, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n*2, true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+function unlockHtmlAudio(){
+  try {
+    if (!htmlAudio) { htmlAudio = new Audio(); htmlAudio.src = silentWavUrl(); htmlAudio.loop = true; htmlAudio.setAttribute('playsinline', ''); }
+    if (htmlAudio.paused) { const p = htmlAudio.play(); if (p && p.catch) p.catch(() => {}); }
+  } catch (e) {}
+}
+function ensureAudio(){
+  if (muted) return;
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
+  unlockHtmlAudio();
+  if (actx) { if (actx.state !== 'running') { try { actx.resume(); } catch (e) {} } return; }
+  try { actx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
+  try { actx.resume(); } catch (e) {}
+  // общий выход: громче + компрессор, чтобы на динамике телефона было слышно и не хрипело
+  const comp = actx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
+  out = actx.createGain(); out.gain.value = 2.2;
+  out.connect(comp).connect(actx.destination);
+  { const b = actx.createBuffer(1, 1, 22050), s0 = actx.createBufferSource(); s0.buffer = b; s0.connect(actx.destination); s0.start(0); }
+  noiseBuf = actx.createBuffer(1, actx.sampleRate * 2, actx.sampleRate);
+  const nd = noiseBuf.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  // гул конвейера: низкий мотор + шорох роликов, с лёгким «дыханием»
+  const osc = actx.createOscillator(); osc.type = 'sawtooth'; osc.frequency.value = 48;
+  const osc2 = actx.createOscillator(); osc2.type = 'square'; osc2.frequency.value = 97;
+  const g2 = actx.createGain(); g2.gain.value = 0.25;
+  const lp = actx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 260;
+  const src = actx.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
+  const bp = actx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = 0.7;
+  const ng = actx.createGain(); ng.gain.value = 0.18;
+  const trem = actx.createGain(); trem.gain.value = 1;
+  const lfo = actx.createOscillator(); lfo.frequency.value = 5; const lfoG = actx.createGain(); lfoG.gain.value = 0.3;
+  lfo.connect(lfoG).connect(trem.gain);
+  const master = actx.createGain(); master.gain.value = 0;
+  osc.connect(lp); osc2.connect(g2).connect(lp); lp.connect(trem);
+  src.connect(bp).connect(ng).connect(trem); trem.connect(master).connect(out);
+  osc.start(); osc2.start(); src.start(); lfo.start();
+  hum = { osc, osc2, lfo, master, ng, last: -1 };
+}
+function updateHum(){
+  if (!hum) return;
+  const on = !muted && mode === 'play' && overTimer < 0 && !broken.active && def.mode === 'sort';
+  const t = actx.currentTime, target = on ? 0.07 : 0;
+  if (Math.abs(hum.last - target) > 0.001) { hum.master.gain.setTargetAtTime(target, t, 0.15); hum.last = target; }
+  // чем больше посылок едет по ленте, тем сильнее дребезжат ролики
+  let load = 0; for (const b of boxes) if (b.state === 'belt' && b.belt === 0) load += 1 + b.s * 0.6;
+  hum.ng.gain.setTargetAtTime(0.12 + 0.05 * Math.min(load, 8), t, 0.25);
+  const es = speed * slowK(), fq = 40 + es * 0.22;
+  hum.osc.frequency.setTargetAtTime(fq, t, 0.3); hum.osc2.frequency.setTargetAtTime(fq * 2.01, t, 0.3);
+  hum.lfo.frequency.setTargetAtTime(3 + es * 0.06, t, 0.3);
+}
+function noise(dur, type, freq, vol, delay = 0, q = 1){
+  if (!actx || muted || !noiseBuf) return;
+  const t = actx.currentTime + delay;
+  const s = actx.createBufferSource(); s.buffer = noiseBuf;
+  const f = actx.createBiquadFilter(); f.type = type; f.frequency.value = freq; f.Q.value = q;
+  const g = actx.createGain(); g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f).connect(g).connect(out); s.start(t, Math.random()); s.stop(t + dur + 0.05);
+}
+function roll(dur = 0.8, vol = 0.14){ // тележка катится по полу
+  if (!actx || muted || !noiseBuf) return;
+  const t = actx.currentTime;
+  const s = actx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+  const f = actx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 380; f.Q.value = 1.1;
+  const trem = actx.createGain(); trem.gain.value = 0.6;
+  const lfo = actx.createOscillator(); lfo.frequency.value = 13; const lg = actx.createGain(); lg.gain.value = 0.4;
+  lfo.connect(lg).connect(trem.gain);
+  const g = actx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(vol, t + 0.08);
+  g.gain.setValueAtTime(vol, t + dur - 0.2); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(f).connect(trem).connect(g).connect(out);
+  s.start(t); lfo.start(t); s.stop(t + dur + 0.05); lfo.stop(t + dur + 0.05);
+  tone(1100, 900, dur * 0.5, 'triangle', 0.01, 0.05); // скрип колеса
+}
+// скрежет колёс, пока тянешь тележку пальцем: громкость = скорость пальца
+let dragSnd = null;
+function dragSoundStart(){
+  if (!actx || muted || !noiseBuf || dragSnd) return;
+  const s = actx.createBufferSource(); s.buffer = noiseBuf; s.loop = true;
+  const f = actx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 340; f.Q.value = 1.4;
+  const g = actx.createGain(); g.gain.value = 0;
+  s.connect(f).connect(g).connect(out); s.start();
+  dragSnd = { s, g, f };
+}
+function dragSoundSet(v){ if (dragSnd) { const t = actx.currentTime; dragSnd.g.gain.setTargetAtTime(Math.min(0.22, v * 0.0009), t, 0.04); dragSnd.f.frequency.setTargetAtTime(280 + Math.min(300, v * 0.6), t, 0.05); } }
+function dragSoundStop(){ if (dragSnd) { const d = dragSnd; d.g.gain.setTargetAtTime(0, actx.currentTime, 0.05); setTimeout(() => { try { d.s.stop(); } catch (e) {} }, 300); dragSnd = null; } }
+function crackle(n = 6, vol = 0.3){ for (let k = 0; k < n; k++) noise(0.018 + Math.random()*0.02, 'highpass', 3500 + Math.random()*3000, vol * (0.4 + Math.random()*0.6), Math.random() * 0.25); }
+function tone(f1, f2, dur, type = 'square', vol = 0.06, delay = 0){
+  if (!actx || muted) return;
+  const t = actx.currentTime + delay;
+  const o = actx.createOscillator(), g = actx.createGain();
+  o.type = type; o.frequency.setValueAtTime(f1, t);
+  o.frequency.exponentialRampToValueAtTime(Math.max(30, f2), t + dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(out); o.start(t); o.stop(t + dur + 0.02);
+}
+const sfx = {
+  pick: s => { noise(0.08, 'highpass', 2200, 0.12); s === 0 ? tone(520, 760, 0.08, 'square', 0.04) : tone(150 - s*25, 90, 0.18 + s*0.1, 'sawtooth', 0.05); },
+  lifted: () => tone(300, 420, 0.07, 'triangle', 0.07),
+  drop: s => { // картон о дно + звон сетки тележки
+    noise(0.16 + s*0.08, 'lowpass', 280 - s*60, 0.55 + s*0.25);
+    tone(140 - s*30, 50, 0.16 + s*0.06, 'sine', 0.28);
+    tone(1250, 1190, 0.28, 'triangle', 0.035, 0.02); tone(1720, 1650, 0.22, 'triangle', 0.022, 0.03);
+    tone(880, 1320, 0.08, 'square', 0.03, 0.1);
+  },
+  overload: () => { noise(0.35, 'lowpass', 320, 0.6); tone(300, 90, 0.4, 'square', 0.07); tone(1300, 1200, 0.3, 'triangle', 0.04, 0.05); },
+  cartSend: () => roll(0.9, 0.15),
+  cartBack: () => roll(0.5, 0.08),
+  breakdown: () => { noise(0.6, 'bandpass', 600, 0.7, 0, 2); tone(180, 35, 0.7, 'sawtooth', 0.1); tone(120, 60, 0.12, 'square', 0.08, 0.15); tone(110, 50, 0.12, 'square', 0.08, 0.35); },
+  alarm: () => { tone(880, 880, 0.14, 'square', 0.035); tone(660, 660, 0.14, 'square', 0.035, 0.18); },
+  ratchet: () => noise(0.035, 'highpass', 3200, 0.35),
+  fixed: () => { tone(50, 140, 0.7, 'sawtooth', 0.08); [784, 1046].forEach((f, i) => tone(f, f, 0.12, 'square', 0.05, 0.35 + i*0.1)); },
+  toolPick: () => { tone(1500, 1700, 0.06, 'triangle', 0.05); tone(2100, 2000, 0.08, 'triangle', 0.03, 0.04); },
+  slowOn: () => { tone(420, 160, 0.6, 'sawtooth', 0.06); tone(660, 330, 0.5, 'triangle', 0.05, 0.05); },
+  slowOff: () => { tone(160, 420, 0.5, 'sawtooth', 0.05); },
+  toolBack: () => { tone(2300, 2150, 0.07, 'triangle', 0.045); noise(0.04, 'highpass', 3000, 0.15); },
+  toolIn: () => { tone(1800, 1200, 0.05, 'square', 0.04); noise(0.05, 'bandpass', 2500, 0.3, 0, 3); },
+  roller: s => { noise(0.05, 'lowpass', 520 - s*120, 0.05 + s*0.05); tone(95 - s*15, 60, 0.05, 'sine', 0.03 + s*0.03); },
+  flap: () => noise(0.22, 'bandpass', 1900, 0.1, 0, 0.6),
+  sparks: () => crackle(7, 0.35),
+  cartSnap: () => roll(0.3, 0.06),
+  curtain: () => { noise(0.35, 'bandpass', 2400, 0.12, 0, 0.8); tone(1800, 1400, 0.08, 'triangle', 0.02, 0.05); },
+  doorBell: () => { tone(1320, 1320, 0.35, 'triangle', 0.05); tone(990, 990, 0.45, 'triangle', 0.04, 0.16); },
+  cash: () => { noise(0.08, 'highpass', 2500, 0.25); tone(1568, 1568, 0.12, 'square', 0.04, 0.04); tone(2093, 2093, 0.25, 'triangle', 0.06, 0.12); },
+  angry: () => { tone(220, 150, 0.25, 'sawtooth', 0.05); tone(180, 120, 0.3, 'sawtooth', 0.05, 0.2); },
+  wrong: () => { tone(220, 110, 0.25, 'square', 0.07); tone(180, 90, 0.25, 'square', 0.05, 0.08); },
+  fall: () => tone(500, 60, 0.45, 'sawtooth', 0.06),
+  bonus: () => { [523, 659, 784, 1046].forEach((f, i) => tone(f, f*1.01, 0.12, 'square', 0.045, i*0.07)); },
+  win: () => { [523, 659, 784, 1046, 1318].forEach((f, i) => tone(f, f*1.01, 0.16, 'triangle', 0.08, i*0.1)); },
+  over: () => { [392, 330, 262, 196].forEach((f, i) => tone(f, f*0.98, 0.22, 'triangle', 0.08, i*0.16)); },
+  back: () => tone(160, 110, 0.08, 'triangle', 0.08),
+  tick: () => tone(900, 900, 0.04, 'square', 0.03),
+  swap: () => { roll(0.7, 0.13); tone(400, 800, 0.15, 'triangle', 0.05); tone(800, 400, 0.15, 'triangle', 0.05, 0.12); },
+};
+
+// ===== Утилиты =====
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const rand = (a, b) => a + Math.random() * (b - a);
+const lerp = (a, b, t) => a + (b - a) * t;
+const ease = t => 1 - Math.pow(1 - t, 3);
+function rr(g, x, y, w, h, r){
+  r = Math.min(r, w/2, h/2);
+  g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+}
+function mulberry(a){ return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const INK = '#3a2418';
+const DISPLAY = '"Russo One","Arial Black",sans-serif';
+function fitText(g, text, maxW, size, font){
+  g.font = `${size}px ${font}`; const m = g.measureText(text).width;
+  if (m > maxW) { size *= maxW / m; g.font = `${size}px ${font}`; }
+  return size;
+}
+
+// ===== Раскладка =====
+function slotX(slot, n){ const m = 10*u, gap = 8*u, cw = (W - 2*m - (n - 1)*gap) / n; return { x: m + slot * (cw + gap), w: cw }; }
+function layoutCarts(snap){
+  const n = carts.length;
+  carts.forEach(c => { const s = slotX(c.slot, n); c.tx = s.x; c.w = s.w; c.h = L.ch; if (snap) c.x = s.x; });
+}
+function resize(){
+  const r = stage.getBoundingClientRect();
+  const oldW = W || r.width;
+  W = r.width; H = r.height;
+  dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  u = Math.min(W / 400, H / 720);
+  L.hud = 58 * u;
+  L.beltH = 28 * u;
+  L.hatchW = 64 * u;
+  const cw3 = (W - 24*u - 20*u) / 3;
+  L.ch = Math.min(cw3 * 1.25, H * 0.25);   // высокие сетчатые тележки
+  L.cartBase = H - 26 * u;
+  L.cartTop = L.cartBase - L.ch;
+  L.floorY = L.cartTop - 40 * u;
+  L.counterY = Math.max(L.hud + 190*u, H * 0.40);   // стойка выдачи
+  if (def.mode === 'pickup') {             // на выдаче тележки крупнее: в них ищут посылки
+    L.ch = Math.min(cw3 * 1.5, H * 0.33, L.cartBase - L.counterY - 175*u);
+    L.cartTop = L.cartBase - L.ch;
+  }
+  L.tableY = Math.min(L.cartTop - 26*u, L.counterY + 165*u);   // стол для разбора на выдаче
+  table.x = 10*u; table.w = W - 20*u - 92*u;
+  L.bin = { x: W - 98*u, y: L.tableY - 66*u, w: 88*u, h: 66*u };          // ящик для возвратов
+  L.fit = { x: W - 64*u, y: L.hud + 46*u, w: 54*u, h: L.counterY - 34*u - (L.hud + 46*u) };  // примерочная
+  belts[1].y = L.hud + 160 * u;
+  belts[0].y = clamp(H * 0.52, belts[1].y + 150 * u, L.cartTop - 140 * u);
+  belts[0].end = W - 28 * u;
+  belts[1].end = 28 * u;
+  const stop = L.hud + 14*u, slh = (L.floorY - stop) / 5;
+  L.shelves = []; for (let lv = 0; lv < 5; lv++) L.shelves.push(stop + (lv + 1) * slh - 6*u);
+  L.panel = { x: W * 0.62, y: belts[0].y + L.beltH + 18*u, w: 48*u, h: 40*u };
+  if (tool.state === 'shelf') placeTool();
+  layoutCarts(true);
+  const sx = W / oldW;
+  boxes.forEach(b => { b.x *= sx; if (b.state === 'belt') b.y = belts[b.belt].y - bh(b) / 2; });
+  buildBg();
+}
+const bw = b => CONFIG.sizes[b.s].w * u;
+const bh = b => CONFIG.sizes[b.s].h * u;
+const beltActive = i => i === 0 || def.belt2;
+const inS = () => def.mode === "pickup" ? 0.8 : CONFIG.cartInScale;   // на выдаче коробки в тележке крупнее, чтобы читались номера
+
+// ===== Фон склада (рисуется один раз) =====
+function buildBg(){
+  bgCanvas = document.createElement('canvas');
+  bgCanvas.width = cv.width; bgCanvas.height = cv.height;
+  const g = bgCanvas.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (def.mode === 'pickup') { buildPickupBg(g); return; }
+  const rnd = mulberry(7);
+  const lw = 3 * u;
+  let grd = g.createLinearGradient(0, 0, 0, L.floorY);
+  grd.addColorStop(0, '#4f6676'); grd.addColorStop(1, '#7f98a6');
+  g.fillStyle = grd; g.fillRect(0, 0, W, L.floorY);
+  for (let x = 30*u; x < W; x += 130*u) {
+    g.fillStyle = 'rgba(255,246,214,.95)'; rr(g, x, L.hud + 4*u, 70*u, 6*u, 3*u); g.fill();
+    g.fillStyle = 'rgba(255,246,214,.07)';
+    g.beginPath(); g.moveTo(x, L.hud + 10*u); g.lineTo(x + 70*u, L.hud + 10*u); g.lineTo(x + 110*u, L.floorY); g.lineTo(x - 40*u, L.floorY); g.fill();
+  }
+  const top = L.hud + 14*u, bottom = L.floorY, levels = 5, lh = (bottom - top) / levels, bay = 124*u;
+  const cardboard = ['#d9a066', '#c98f55', '#e3b479', '#be8248', '#d49a5e'];
+  for (let x0 = -30*u; x0 < W + bay; x0 += bay) {
+    for (let lv = 0; lv < levels; lv++) {
+      const shelfY = top + (lv + 1) * lh - 6*u;
+      let x = x0 + 9*u;
+      while (x < x0 + bay - 16*u) {
+        const w = (18 + rnd() * 26) * u;
+        if (x + w > x0 + bay - 8*u) break;
+        const h = Math.min(lh - 16*u, (16 + rnd() * 30) * u);
+        if (rnd() < 0.12) { x += w * 0.6; continue; }
+        g.fillStyle = cardboard[(rnd() * cardboard.length) | 0];
+        g.fillRect(x, shelfY - h, w, h);
+        g.fillStyle = 'rgba(255,240,210,.3)'; g.fillRect(x + w*0.42, shelfY - h, w*0.16, h);
+        if (rnd() < 0.35) { g.fillStyle = 'rgba(255,255,255,.7)'; g.fillRect(x + w*0.15, shelfY - h*0.55, w*0.4, h*0.22); }
+        g.strokeStyle = INK; g.lineWidth = lw * 0.6; g.strokeRect(x, shelfY - h, w, h);
+        x += w + (1 + rnd() * 4) * u;
+      }
+    }
+  }
+  for (let lv = 0; lv < levels; lv++) {
+    const y = top + (lv + 1) * lh - 6*u;
+    g.fillStyle = '#2f62b3'; g.fillRect(0, y, W, 8*u);
+    g.strokeStyle = INK; g.lineWidth = lw * 0.7; g.strokeRect(-5, y, W + 10, 8*u);
+  }
+  for (let x0 = -30*u; x0 < W + bay; x0 += bay) {
+    g.fillStyle = '#e8742a'; g.fillRect(x0 - 5*u, top, 10*u, bottom - top);
+    g.strokeStyle = INK; g.lineWidth = lw * 0.7; g.strokeRect(x0 - 5*u, top, 10*u, bottom - top);
+    g.fillStyle = 'rgba(58,36,24,.55)';
+    for (let y = top + 8*u; y < bottom; y += 14*u) g.fillRect(x0 - 1.5*u, y, 3*u, 5*u);
+  }
+  g.fillStyle = 'rgba(30,44,58,.38)'; g.fillRect(0, top, W, bottom - top);
+  grd = g.createLinearGradient(0, L.floorY, 0, H);
+  grd.addColorStop(0, '#9a8f82'); grd.addColorStop(1, '#6f665c');
+  g.fillStyle = grd; g.fillRect(0, L.floorY, W, H - L.floorY);
+  g.strokeStyle = 'rgba(58,36,24,.18)'; g.lineWidth = 1.5*u;
+  for (let i = -8; i <= 8; i++) { g.beginPath(); g.moveTo(W/2 + i*40*u, L.floorY); g.lineTo(W/2 + i*120*u, H); g.stroke(); }
+  const sy = L.floorY + 8*u, sh = 10*u;
+  g.fillStyle = '#ffd21f'; g.fillRect(0, sy, W, sh);
+  g.save(); g.beginPath(); g.rect(0, sy, W, sh); g.clip(); g.fillStyle = '#2b2420';
+  for (let x = -20*u; x < W + 20*u; x += 20*u) { g.beginPath(); g.moveTo(x, sy + sh); g.lineTo(x + 10*u, sy); g.lineTo(x + 18*u, sy); g.lineTo(x + 8*u, sy + sh); g.fill(); }
+  g.restore();
+  g.strokeStyle = INK; g.lineWidth = lw * 0.6; g.strokeRect(-5, sy, W + 10, sh);
+  g.fillStyle = '#3d4d58'; g.fillRect(0, L.floorY - 4*u, W, 5*u);
+  if (def.loc && def.loc.tint) g.fillStyle = def.loc.tint, g.fillRect(0, 0, W, H);
+  if (def.loc && def.loc.id === 'winter') { // снег на балках стеллажей
+    g.fillStyle = 'rgba(255,255,255,.85)';
+    for (const y of L.shelves || []) for (let x = 0; x < W; x += 16*u) { g.beginPath(); g.ellipse(x + 8*u, y + 1*u, 9*u, 3*u, 0, 0, Math.PI*2); g.fill(); }
+  }
+  if (def.loc && def.loc.id === 'night') { // ночная смена: лампы ярче
+    for (let x = 30*u; x < W; x += 130*u) {
+      const lg = g.createRadialGradient(x + 35*u, L.hud + 8*u, 2*u, x + 35*u, L.hud + 8*u, 140*u);
+      lg.addColorStop(0, 'rgba(255,240,190,.35)'); lg.addColorStop(1, 'rgba(255,240,190,0)');
+      g.fillStyle = lg; g.fillRect(x - 110*u, L.hud, 290*u, 200*u);
+    }
+  }
+}
+
+// ===== Фон пункта выдачи =====
+function buildPickupBg(g){
+  const lw = 3*u, cy = L.counterY, top = L.hud;
+  const th = def.loc || LOCATIONS[1], sale = !!th.flags;
+  // зал для клиентов
+  let grd = g.createLinearGradient(0, top, 0, cy);
+  grd.addColorStop(0, th.wall[0]); grd.addColorStop(1, th.wall[1]);
+  g.fillStyle = grd; g.fillRect(0, 0, W, cy);
+  g.fillStyle = '#c4b49c'; g.fillRect(0, cy - 34*u, W, 34*u);
+  g.strokeStyle = 'rgba(58,36,24,.15)'; g.lineWidth = 1.5*u;
+  for (let x = -20*u; x < W + 20*u; x += 34*u) { g.beginPath(); g.moveTo(x, cy - 34*u); g.lineTo(x - 10*u, cy); g.stroke(); }
+  // дверь
+  const dx = 10*u, dy = top + 46*u, dw = 60*u, dh = cy - 34*u - dy;
+  g.fillStyle = '#6b7883'; g.fillRect(dx, dy, dw, dh); g.strokeStyle = INK; g.lineWidth = lw; g.strokeRect(dx, dy, dw, dh);
+  g.fillStyle = '#a9d3e6'; g.fillRect(dx + 6*u, dy + 6*u, dw - 12*u, dh - 12*u);
+  g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 3*u;
+  g.beginPath(); g.moveTo(dx + 14*u, dy + 40*u); g.lineTo(dx + 34*u, dy + 16*u); g.stroke();
+  g.beginPath(); g.moveTo(dx + 14*u, dy + 60*u); g.lineTo(dx + 46*u, dy + 22*u); g.stroke();
+  g.fillStyle = '#ffd21f'; g.fillRect(dx + dw - 14*u, dy + dh*0.5, 5*u, 18*u);
+  g.fillStyle = INK; g.font = `600 ${9*u}px Rubik,sans-serif`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('ВХОД', dx + dw/2, dy - 8*u);
+  // вывеска
+  const sw = Math.min(W - 160*u, 230*u), sx = W/2 - sw/2 + 20*u, sy = top + 10*u;
+  g.fillStyle = th.signColor; rr(g, sx, sy, sw, 30*u, 8*u); g.fill(); g.strokeStyle = INK; g.lineWidth = lw; g.stroke();
+  g.fillStyle = '#fff'; fitText(g, th.sign, sw - 20*u, 14*u, DISPLAY);
+  g.fillText(th.sign, sx + sw/2, sy + 16*u);
+  // часы работы
+  g.fillStyle = '#fff4e2'; rr(g, sx + sw*0.25, sy + 40*u, sw*0.5, 20*u, 5*u); g.fill(); g.lineWidth = lw*0.6; g.stroke();
+  g.fillStyle = INK; fitText(g, 'Ежедневно 9:00–21:00', sw*0.46, 10*u, '600 Rubik,sans-serif');
+  g.fillText('Ежедневно 9:00–21:00', sx + sw/2, sy + 50.5*u);
+  // примерочная
+  const px = W - 64*u, py = top + 46*u, ph = cy - 34*u - py;
+  g.fillStyle = '#4a525a'; g.fillRect(px - 4*u, py - 4*u, 60*u, 5*u);
+  for (let i = 0; i < 6; i++) {
+    g.fillStyle = i % 2 ? '#b84444' : '#c95353';
+    g.fillRect(px + i * 9*u, py, 9*u, ph);
+  }
+  g.strokeStyle = INK; g.lineWidth = lw*0.7; g.strokeRect(px, py, 54*u, ph);
+  g.fillStyle = INK; g.font = `600 ${8*u}px Rubik,sans-serif`; g.fillText('ПРИМЕРОЧНАЯ', px + 27*u, py - 12*u);
+  if (sale) { // гирлянда флажков
+    for (let x = 0; x < W; x += 18*u) {
+      g.fillStyle = ['#ffd21f', '#2a5bff', '#b5179e', '#5fbf2a'][Math.round(x / (18*u)) % 4];
+      g.beginPath(); g.moveTo(x, top + 4*u); g.lineTo(x + 14*u, top + 4*u); g.lineTo(x + 7*u, top + 16*u); g.closePath(); g.fill();
+    }
+  }
+  // наша сторона: подсобка с ячейками хранения
+  grd = g.createLinearGradient(0, cy, 0, H); grd.addColorStop(0, '#7f8a92'); grd.addColorStop(1, '#5c656c');
+  g.fillStyle = grd; g.fillRect(0, cy, W, H - cy);
+  const rTop = cy + 40*u, rBot = L.cartTop - 14*u, rows = Math.max(1, Math.floor((rBot - rTop) / (34*u)));
+  const rnd = mulberry(11);
+  for (let r = 0; r < rows; r++) {
+    const y = rTop + (r + 1) * (rBot - rTop) / rows;
+    let x = 6*u;
+    while (x < W - 20*u) {
+      const w = (16 + rnd() * 20) * u, h = (14 + rnd() * 14) * u;
+      g.fillStyle = ['#d9a066', '#c98f55', '#e3b479'][(rnd() * 3) | 0]; g.fillRect(x, y - h, w, h);
+      g.strokeStyle = INK; g.lineWidth = lw*0.5; g.strokeRect(x, y - h, w, h);
+      x += w + (2 + rnd() * 8) * u;
+    }
+    g.fillStyle = '#2f62b3'; g.fillRect(0, y, W, 6*u); g.strokeStyle = INK; g.strokeRect(-4, y, W + 8, 6*u);
+  }
+  g.fillStyle = 'rgba(30,40,50,.35)'; g.fillRect(0, cy, W, rBot - cy + 8*u);
+  // плитка пола
+  g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 1.2*u;
+  for (let y = L.cartTop - 6*u; y < H; y += 22*u) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+}
+
+// ===== Коробки =====
+function newBox(s, beltIdx){
+  const S = CONFIG.sizes[s], n = carts.length;
+  let brand = (Math.random() * n) | 0;
+  if (brand === lastBrand && ++sameCount >= 2) brand = (brand + 1 + ((Math.random() * (n - 1)) | 0)) % n;
+  if (brand !== lastBrand) sameCount = 0;
+  lastBrand = brand;
+  const b = { id: Math.random() * 100, s, brand, belt: beltIdx, kg: Math.round(rand(S.kg[0], S.kg[1])),
+              x: 0, y: 0, vx: 0, vy: 0, ang: 0, va: 0, state: 'belt', t: 0, lift: 0, alpha: 1,
+              sx: 0, sy: 0, tx: 0, ty: 0, cart: null };
+  b.x = beltIdx === 0 ? L.hatchW * 0.5 - bw(b) / 2 : W - L.hatchW * 0.5 + bw(b) / 2;
+  b.y = belts[beltIdx].y - bh(b) / 2;
+  boxes.unshift(b);
+  if (mode === 'play') sfx.flap();
+}
+
+// ===== Укладка в тележку по объёму =====
+function cartGeom(c){
+  if (c.table) { const cageB = L.tableY, cageH = 120*u; return { d: 0, w: c.w, cageT: cageB - cageH, cageB, cageH, in0: 4*u, in1: c.w - 4*u }; }
+  const d = Math.min(10*u, c.w * 0.1), w = c.w - d;
+  const cageT = L.cartTop + 4*u, cageB = L.cartTop + c.h - 18*u;
+  return { d, w, cageT, cageB, cageH: cageB - cageT, in0: 4*u, in1: w - 2*u };
+}
+function landSpot(c, s, prefX){
+  const G = cartGeom(c), S = CONFIG.sizes[s], sc = inS();
+  const w = S.w * u * sc, h = S.h * u * sc;
+  const landAt = cx => { let land = 0; for (const it of c.items) if (Math.abs(it.cx - cx) < (it.w + w)/2 - 1.5*u) land = Math.max(land, it.y + it.h); return land; };
+  let best = null;
+  for (let cx = G.in0 + w/2; cx <= G.in1 - w/2 + 0.01; cx += 3*u) {
+    const land = landAt(cx), wallGap = Math.min(cx - w/2 - G.in0, G.in1 - cx - w/2);
+    const sc_ = land * 4 + wallGap * 0.6 + Math.abs(cx - prefX) * 0.1;   // ниже и плотнее к стенке
+    if (!best || sc_ < best.score) best = { cx, land, score: sc_ };
+  }
+  if (!best) { const cx = (G.in0 + G.in1) / 2; best = { cx, land: landAt(cx) }; }
+  best.w = w; best.h = h;
+  best.over = best.land + h > G.cageH * CONFIG.overflowAt;
+  return best;
+}
+function cartFill(c){ let m = 0; for (const it of c.items) m = Math.max(m, it.y + it.h); return m / cartGeom(c).cageH; }
+function spillTop(c){ // верхняя посылка вываливается из перегруженной тележки
+  if (!c.items.length) return;
+  let k = 0; c.items.forEach((it, i) => { if (it.y + it.h > c.items[k].y + c.items[k].h) k = i; });
+  const it = c.items.splice(k, 1)[0], G = cartGeom(c);
+  boxes.push({ id: Math.random()*100, s: it.s, brand: it.brand, belt: 0, kg: it.kg, sc: inS(),
+               x: c.x + it.cx, y: G.cageB - it.y - it.h/2, vx: rand(-1, 1) * 200*u, vy: -380*u, ang: it.ang, va: rand(-8, 8),
+               state: 'reject', t: 0, lift: 0, alpha: 1 });
+}
+function addItemAt(c, s, brand, kg, spot, num){
+  c.items.push({ s, brand, kg, num, cx: spot.cx, y: spot.land, w: spot.w, h: spot.h, ang: rand(-0.05, 0.05) });
+}
+
+// ===== Пункт выдачи: клиенты и поиск посылок по номеру =====
+const table = { table: true, x: 0, w: 0, items: [], leaving: false, bump: 0, no: 0, brand: -1 };
+const holders = () => carts.concat(def.mode === 'pickup' ? [table] : []);
+let customers = [], usedNums = new Set(), reservedNums = new Set(), arriveTimer = 0, served = 0, angryCount = 0;
+const LOOKS = {
+  skin: ['#f2c9a0', '#e0ac7e', '#c98e62', '#a8714a', '#f5d6b8'],
+  hair: ['#3a2418', '#6b3f1f', '#c9a45a', '#222', '#a0522d', '#8a8a8a'],
+  shirt: ['#3f7fd6', '#d65a3f', '#4fae6a', '#8a5cc7', '#e0b23a', '#2fa3a3', '#c84f86', '#5b6670'],
+};
+const pick = a => a[(Math.random() * a.length) | 0];
+function uniqueNum(){ for (let k = 0; k < 200; k++) { const n = 10 + ((Math.random() * 90) | 0); if (!usedNums.has(n)) { usedNums.add(n); return n; } } return 10 + ((Math.random() * 90) | 0); }
+function fillCart(c, n){
+  for (let k = 0; k < n; k++) {
+    const r = Math.random(), s = r < 0.55 ? 0 : r < 0.88 ? 1 : 2, S = CONFIG.sizes[s];
+    const sp = landSpot(c, s, rand(0, c.w));
+    if (sp.over) break;
+    addItemAt(c, s, c.brand, Math.round(rand(S.kg[0], S.kg[1])), sp, uniqueNum());
+  }
+}
+function windowX(i){ return W * (i + 1) / (def.windows + 1); }
+function startRefill(c){ c.leaving = true; c.lt = 0; c.away = 2.5; c.refill = true; c.sendPts = 0; c.sendKg = 0; c.sendFull = false; sfx.cartSend(); }
+const AT_WINDOW = ['walkIn', 'wait', 'happy', 'angry', 'walkBack', 'verdict'];
+function windowsBusy(){
+  const busy = new Set(customers.filter(cu => AT_WINDOW.includes(cu.state)).map(cu => cu.slot));
+  for (const b of boxes) if (b.state === 'returned') busy.add(b.slot);
+  return busy;
+}
+const fittingBusy = () => customers.some(cu => cu.state === 'toFitting' || cu.state === 'fitting');
+const inBin = (x, y) => def.mode === 'pickup' && x > L.bin.x - 6*u && x < L.bin.x + L.bin.w + 6*u && y > L.bin.y - 50*u && y < L.bin.y + L.bin.h + 20*u;
+let binCount = 0;
+function spawnCustomer(){
+  if (customers.some(cu => cu.state === 'queue')) return false;   // вернувшийся из примерочной проходит первым
+  const busy = windowsBusy();
+  const free = []; for (let i = 0; i < def.windows; i++) if (!busy.has(i)) free.push(i);
+  if (!free.length) return false;
+  const pool = [];
+  for (const c of holders()) if (!c.leaving) for (const it of c.items) if (it.num && !reservedNums.has(it.num)) pool.push(it);
+  if (!pool.length) return false;
+  const it = pick(pool), slot = pick(free);
+  reservedNums.add(it.num);
+  customers.push({ id: Math.random(), slot, x: -40*u, tx: windowX(slot), state: 'walkIn', t: 0,
+    want: { num: it.num, brand: it.brand }, patience: def.patience, max: def.patience, say: '', sayT: 0, shake: 0,
+    look: (() => { const style = (Math.random() * 5) | 0; return { skin: pick(LOOKS.skin), hair: pick(LOOKS.hair), shirt: pick(LOOKS.shirt), cap: pick(LOOKS.shirt),
+      style, clothes: (Math.random() * 4) | 0, glasses: Math.random() < 0.25, beard: (style === 0 || style === 4) && Math.random() < 0.3 }; })() });
+  sfx.doorBell();
+  return true;
+}
+function customerAt(x, y){
+  const half = W / (def.windows + 1) / 2 + 10*u;
+  return customers.find(cu => cu.state === 'wait' && Math.abs(x - cu.x) < half && y < L.counterY + 40*u);
+}
+function itemRect(c, it){ const G = cartGeom(c); return { x: c.x + it.cx, y: G.cageB - it.y - it.h/2, w: it.w, h: it.h }; }
+function itemBlocked(c, it){
+  return c.items.some(o => o !== it && o.y >= it.y + it.h - 2*u && Math.abs(o.cx - it.cx) < (o.w + it.w)/2 - 2*u);
+}
+function pickupPointerDown(p, e){
+  for (const b of boxes) {
+    if (b.state !== 'returned') continue;
+    const w = bw(b) * 0.8, h = bh(b) * 0.8;
+    if (Math.abs(p.x - b.x) < w/2 + 8*u && Math.abs(p.y - b.y) < h/2 + 8*u) {
+      b.state = CONFIG.sizes[b.s].lift > 0 ? 'lifting' : 'held'; b.baseY = b.y; b.sc = 1; b.lift = 0; b.vx = b.vy = 0;
+      boxes.splice(boxes.indexOf(b), 1); boxes.push(b); held = b; pointer = p;
+      try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+      sfx.pick(b.s); e.preventDefault(); return;
+    }
+  }
+  let hit = null;
+  for (const c of holders()) {
+    if (c.leaving) continue;
+    for (const it of c.items) {
+      const r = itemRect(c, it);
+      if (Math.abs(p.x - r.x) < r.w/2 + 3*u && Math.abs(p.y - r.y) < r.h/2 + 3*u && (!hit || it.y > hit.it.y)) hit = { c, it };
+    }
+  }
+  if (!hit) return;
+  const { c, it } = hit;
+  if (itemBlocked(c, it)) {
+    c.no = 0.5; tone(300, 240, 0.08, 'square', 0.04);
+    popups.push({ x: c.table ? p.x : c.x + c.w/2, y: (c.table ? L.tableY : L.cartTop) - 70*u, text: 'Сними верхнюю — положи на стол', color: '#fff4e2', t: 0 });
+    return;
+  }
+  c.items.splice(c.items.indexOf(it), 1);
+  const r = itemRect(c, it), S = CONFIG.sizes[it.s];
+  const b = { id: Math.random()*100, s: it.s, brand: it.brand, kg: it.kg, num: it.num, belt: 0, from: c,
+              x: r.x, y: r.y, baseY: r.y, vx: 0, vy: 0, ang: 0, va: 0, state: S.lift > 0 ? 'lifting' : 'held',
+              lift: 0, alpha: 1, sc: 1, t: 0 };
+  boxes.push(b); held = b; pointer = p;
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  sfx.pick(b.s); e.preventDefault();
+}
+function holderUnder(x, y){
+  if (def.mode === 'pickup' && x > table.x && x < table.x + table.w && y > L.tableY - 130*u && y < L.tableY + 30*u) return table;
+  return carts.find(k => !k.leaving && x > k.x && x < k.x + k.w && y > L.cartTop - 50*u);
+}
+function returnToCart(b, c){
+  let target = c && !c.leaving ? c : null;
+  let sp = target ? landSpot(target, b.s, b.x - target.x) : null;
+  if (!target || sp.over) {
+    target = [table].concat(carts).find(k => !k.leaving && !landSpot(k, b.s, k.w/2).over) || carts.find(k => !k.leaving) || carts[0];
+    sp = landSpot(target, b.s, b.x - target.x);
+  }
+  b.state = 'dropping'; b.t = 0; b.cart = target; b.spot = sp; b.sx = b.x; b.sy = b.y; b.noScore = true;
+}
+function pickupRelease(b){
+  if (b.ret && (b.state === 'lifting' || !(inBin(pointer.x, pointer.y) || holderUnder(pointer.x, pointer.y) || customerAt(b.x, b.y)))) {
+    b.state = 'returned'; b.sc = 0.8; b.x = windowX(b.slot); b.y = L.counterY - bh(b)*0.8/2 - 4*u; b.ang = 0; return; // остаётся на стойке
+  }
+  if (b.ret && inBin(pointer.x, pointer.y)) {
+    b.state = 'given'; b.t = 0; b.sx = b.x; b.sy = b.y; b.tx = L.bin.x + L.bin.w/2; b.ty = L.bin.y + L.bin.h*0.4;
+    usedNums.delete(b.num); binCount++; score += 30; sfx.drop(b.s);
+    popups.push({ x: L.bin.x + L.bin.w/2 - 60*u, y: L.bin.y - 30*u, text: 'Возврат оформлен +30 ₽', color: '#5fdc6a', t: 0 });
+    return;
+  }
+  if (b.ret) b.ret = false;   // положили возврат обратно в тележку или на стол — снова обычная посылка
+  if (b.state === 'lifting') { returnToCart(b, b.from); return; }
+  const cu = customerAt(b.x, b.y);
+  if (cu) {
+    if (cu.want.num === b.num) {
+      const frac = clamp(cu.patience / cu.max, 0, 1);
+      const pay = Math.round((80 + b.kg * 4 + 70 * frac) / 10) * 10;
+      score += pay; served++; streak++;
+      reservedNums.delete(b.num); usedNums.delete(b.num);
+      cu.state = 'happy'; cu.t = 0; cu.hasBox = true; cu.box = { s: b.s, brand: b.brand, num: b.num, kg: b.kg };
+      cu.next = (!fittingBusy() && def.time - elapsed > 20 && Math.random() < def.tryOn) ? 'toFitting' : 'walkOut';
+      cu.say = cu.next === 'toFitting' ? 'Сейчас примерю!' : frac > 0.6 ? 'Спасибо, быстро!' : 'Спасибо!'; cu.sayT = 1.3;
+      b.state = 'given'; b.t = 0; b.sx = b.x; b.sy = b.y; b.tx = cu.x; b.ty = L.counterY - 50*u;
+      popups.push({ x: cu.x, y: L.counterY - 190*u, text: '+' + pay + ' ₽', color: '#5fdc6a', t: 0 });
+      sfx.cash();
+    } else {
+      cu.patience = Math.max(0.5, cu.patience - cu.max * 0.3); cu.say = 'Это не моё!'; cu.sayT = 1.2; cu.shake = 1;
+      streak = 0; sfx.wrong();
+      returnToCart(b, b.from);
+    }
+    return;
+  }
+  const c = holderUnder(pointer.x, pointer.y);
+  if (c) {
+    const sp = landSpot(c, b.s, pointer.x - c.x);
+    if (!sp.over) { b.state = 'dropping'; b.t = 0; b.cart = c; b.spot = sp; b.sx = b.x; b.sy = b.y; b.noScore = true; return; }
+    popups.push({ x: pointer.x, y: (c.table ? L.tableY : L.cartTop) - 70*u, text: c.table ? 'Стол занят' : 'Не влезает — положи на стол', color: '#fff4e2', t: 0 });
+  }
+  returnToCart(b, b.from);
+}
+function updatePickup(dt){
+  if (overTimer < 0) {
+    arriveTimer -= dt;
+    if (arriveTimer <= 0 && def.time - elapsed > 6) { if (spawnCustomer()) arriveTimer = def.arrive * rand(0.75, 1.25); else arriveTimer = 0.5; }
+    for (const c of carts) if (!c.leaving && !c.items.length && !boxes.some(b => b.cart === c && b.state === 'dropping') && !(held && held.from === c)) startRefill(c);
+  }
+  for (let i = customers.length - 1; i >= 0; i--) {
+    const cu = customers[i];
+    cu.t += dt; cu.sayT = Math.max(0, cu.sayT - dt); cu.shake = Math.max(0, cu.shake - dt * 2.5);
+    if (cu.state === 'walkIn') { cu.x = Math.min(cu.tx, cu.x + 170*u*dt); if (cu.x >= cu.tx) { cu.state = 'wait'; cu.t = 0; } }
+    else if (cu.state === 'wait') {
+      if (overTimer < 0) cu.patience -= dt;
+      if (cu.patience <= 0) {
+        cu.state = 'angry'; cu.t = 0; cu.say = 'Ну и где?!'; cu.sayT = 1.4; reservedNums.delete(cu.want.num); angryCount++;
+        sfx.angry(); loseLife('Клиент ушёл без посылки', cu.x, L.counterY - 100*u);
+      }
+    }
+    else if (cu.state === 'happy' || cu.state === 'angry') { if (cu.t > 1.2) { cu.state = cu.state === 'happy' ? (cu.next || 'walkOut') : 'walkOut'; cu.t = 0; } }
+    else if (cu.state === 'toFitting') {
+      const fx = L.fit.x + L.fit.w/2;
+      cu.x += Math.sign(fx - cu.x) * Math.min(Math.abs(fx - cu.x), 150*u*dt);
+      if (Math.abs(fx - cu.x) < 1) { cu.state = 'fitting'; cu.t = 0; cu.dur = rand(4, 6); sfx.curtain(); }
+    }
+    else if (cu.state === 'fitting') {
+      if (cu.t > cu.dur) { cu.state = 'queue'; cu.t = 0; cu.liked = Math.random() < 0.55; cu.say = 'Жду свободное окно'; cu.sayT = 999; sfx.curtain(); }
+    }
+    else if (cu.state === 'queue') {
+      const busy = windowsBusy(); let free = -1;
+      for (let k = 0; k < def.windows; k++) if (!busy.has(k)) { free = k; break; }
+      if (free >= 0) { cu.slot = free; cu.tx = windowX(free); cu.state = 'walkBack'; cu.t = 0; cu.sayT = 0; }
+    }
+    else if (cu.state === 'walkBack') {
+      cu.x += Math.sign(cu.tx - cu.x) * Math.min(Math.abs(cu.tx - cu.x), 160*u*dt);
+      if (Math.abs(cu.tx - cu.x) < 1) {
+        cu.state = 'verdict'; cu.t = 0; cu.sayT = 1.6;
+        if (cu.liked) {
+          cu.say = 'Подошло, беру!'; score += 50; sfx.cash();
+          popups.push({ x: cu.x, y: L.counterY - 190*u, text: '+50 ₽ чаевые', color: '#5fdc6a', t: 0 });
+        } else {
+          cu.say = 'Не подошло, возврат'; cu.hasBox = false; sfx.angry();
+          const bx = cu.box, S = CONFIG.sizes[bx.s];
+          boxes.push({ id: Math.random()*100, s: bx.s, brand: bx.brand, kg: bx.kg, num: bx.num, belt: 0, from: null, ret: true, slot: cu.slot,
+                       x: cu.x, y: L.counterY - S.h*u*0.8/2 - 4*u, vx: 0, vy: 0, ang: rand(-0.06, 0.06), va: 0, state: 'returned', lift: 0, alpha: 1, sc: 0.8, t: 0 });
+          usedNums.add(bx.num);
+        }
+      }
+    }
+    else if (cu.state === 'verdict') { if (cu.t > 1.6) { cu.state = 'walkOut'; cu.t = 0; } }
+    else if (cu.state === 'walkOut') { cu.x += 190*u*dt; if (cu.x > W + 60*u) customers.splice(i, 1); }
+  }
+}
+
+function drawTable(g){
+  const x = table.x, w = table.w, y = L.tableY, lw = 3*u;
+  const over = held && held.state === 'held' && holderUnder(pointer.x, pointer.y) === table;
+  // ножки уходят за тележки
+  g.fillStyle = '#4a525a';
+  for (const lx of [x + 14*u, x + w - 22*u]) { g.fillRect(lx, y + 18*u, 8*u, L.cartTop - y); g.strokeStyle = INK; g.lineWidth = lw*0.6; g.strokeRect(lx, y + 18*u, 8*u, L.cartTop - y); }
+  const tg = g.createLinearGradient(0, y, 0, y + 20*u);
+  tg.addColorStop(0, '#d9b07a'); tg.addColorStop(1, '#a8713c');
+  g.fillStyle = tg; g.fillRect(x, y, w, 10*u);
+  g.fillStyle = '#8d5c33'; g.fillRect(x + 6*u, y + 10*u, w - 12*u, 10*u);
+  g.strokeStyle = over ? '#ffd21f' : INK; g.lineWidth = over ? 4*u : lw; g.strokeRect(x, y, w, 10*u); g.strokeRect(x + 6*u, y + 10*u, w - 12*u, 10*u);
+  g.fillStyle = '#fff4e2'; rr(g, x + w/2 - 62*u, y + 11*u, 124*u, 9*u, 2*u); g.fill();
+  g.fillStyle = INK; g.textAlign = 'center'; g.textBaseline = 'middle';
+  fitText(g, 'СТОЛ ДЛЯ РАЗБОРА', 116*u, 8*u, DISPLAY); g.fillText('СТОЛ ДЛЯ РАЗБОРА', x + w/2, y + 16*u);
+  if (!table.items.length) {
+    g.fillStyle = 'rgba(255,244,226,.55)'; fitText(g, 'сюда можно выложить коробки', w * 0.8, 11*u, '600 Rubik,sans-serif');
+    g.fillText('сюда можно выложить коробки', x + w/2, y - 14*u);
+  }
+  const items = table.items.slice().sort((a, b) => a.y - b.y);
+  for (const it of items) drawBox(g, it, x + it.cx, y - it.y - it.h/2, inS());
+}
+const darken = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = v => Math.round(v * (1 - k)); return `rgb(${f(n >> 16)},${f(n >> 8 & 255)},${f(n & 255)})`; };
+function drawCustomer(g, cu){
+  if (cu.state === 'fitting') return;
+  const walking = ['walkIn', 'walkOut', 'toFitting', 'walkBack'].includes(cu.state);
+  const x = cu.x + Math.sin(clock * 50) * cu.shake * 4*u;
+  const y0 = L.counterY + 2*u - (walking ? Math.abs(Math.sin(cu.t * 11)) * 4*u : 0);
+  const lk = cu.look, lw = 2.4*u, hy = y0 - 84*u;  // центр головы
+  g.save(); g.strokeStyle = INK; g.lineWidth = lw; g.lineJoin = 'round'; g.lineCap = 'round';
+  // волосы сзади
+  if (lk.style === 1) { g.fillStyle = lk.hair; rr(g, x - 21*u, hy - 14*u, 42*u, 50*u, 16*u); g.fill(); g.stroke(); }
+  // руки
+  const sleeve = darken(lk.shirt, 0.18);
+  g.fillStyle = sleeve;
+  rr(g, x - 37*u, y0 - 50*u, 13*u, 58*u, 6*u); g.fill(); g.stroke();
+  rr(g, x + 24*u, y0 - 50*u, 13*u, 58*u, 6*u); g.fill(); g.stroke();
+  // торс с плечами
+  const tg = g.createLinearGradient(x - 30*u, 0, x + 30*u, 0);
+  tg.addColorStop(0, lk.shirt); tg.addColorStop(0.65, lk.shirt); tg.addColorStop(1, darken(lk.shirt, 0.2));
+  g.fillStyle = tg;
+  g.beginPath();
+  g.moveTo(x - 30*u, y0 + 12*u); g.lineTo(x - 30*u, y0 - 40*u);
+  g.quadraticCurveTo(x - 30*u, y0 - 56*u, x - 12*u, y0 - 60*u);
+  g.lineTo(x + 12*u, y0 - 60*u);
+  g.quadraticCurveTo(x + 30*u, y0 - 56*u, x + 30*u, y0 - 40*u);
+  g.lineTo(x + 30*u, y0 + 12*u); g.closePath(); g.fill(); g.stroke();
+  // одежда
+  g.lineWidth = 2*u;
+  if (lk.clothes === 1) { // худи: капюшон, шнурки, карман
+    g.fillStyle = sleeve; g.beginPath(); g.ellipse(x, y0 - 58*u, 17*u, 7*u, 0, 0, Math.PI*2); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(x - 5*u, y0 - 54*u); g.lineTo(x - 6*u, y0 - 36*u); g.moveTo(x + 5*u, y0 - 54*u); g.lineTo(x + 6*u, y0 - 36*u); g.stroke();
+    rr(g, x - 15*u, y0 - 18*u, 30*u, 14*u, 4*u); g.stroke();
+  } else if (lk.clothes === 2) { // куртка на молнии
+    g.beginPath(); g.moveTo(x, y0 - 58*u); g.lineTo(x, y0 + 10*u); g.stroke();
+    g.fillStyle = darken(lk.shirt, 0.3);
+    g.beginPath(); g.moveTo(x - 12*u, y0 - 60*u); g.lineTo(x - 3*u, y0 - 44*u); g.lineTo(x - 14*u, y0 - 50*u); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(x + 12*u, y0 - 60*u); g.lineTo(x + 3*u, y0 - 44*u); g.lineTo(x + 14*u, y0 - 50*u); g.closePath(); g.fill(); g.stroke();
+  } else if (lk.clothes === 3) { // свитер в полоску
+    g.strokeStyle = 'rgba(255,255,255,.45)'; g.lineWidth = 4*u;
+    for (const yy of [-34, -20, -6]) { g.beginPath(); g.moveTo(x - 28*u, y0 + yy*u); g.lineTo(x + 28*u, y0 + yy*u); g.stroke(); }
+    g.strokeStyle = INK; g.lineWidth = 2*u;
+  } else { // футболка с вырезом
+    g.fillStyle = lk.skin; g.beginPath(); g.moveTo(x - 8*u, y0 - 60*u); g.lineTo(x, y0 - 50*u); g.lineTo(x + 8*u, y0 - 60*u); g.closePath(); g.fill(); g.stroke();
+  }
+  g.lineWidth = lw;
+  // шея
+  g.fillStyle = darken(lk.skin, 0.08); g.fillRect(x - 6*u, hy + 14*u, 12*u, 12*u);
+  // уши и голова
+  g.fillStyle = lk.skin;
+  g.beginPath(); g.arc(x - 17*u, hy + 2*u, 4.5*u, 0, Math.PI*2); g.fill(); g.stroke();
+  g.beginPath(); g.arc(x + 17*u, hy + 2*u, 4.5*u, 0, Math.PI*2); g.fill(); g.stroke();
+  g.beginPath(); g.ellipse(x, hy, 17*u, 19*u, 0, 0, Math.PI*2); g.fill(); g.stroke();
+  // причёска
+  g.fillStyle = lk.hair;
+  if (lk.style === 0) { g.beginPath(); g.ellipse(x, hy - 9*u, 17.5*u, 11*u, 0, Math.PI, Math.PI*2); g.lineTo(x + 17*u, hy - 4*u); g.quadraticCurveTo(x, hy - 12*u, x - 17*u, hy - 4*u); g.closePath(); g.fill(); g.stroke(); }
+  else if (lk.style === 1) { g.beginPath(); g.ellipse(x, hy - 8*u, 18.5*u, 13*u, 0, Math.PI, Math.PI*2); g.quadraticCurveTo(x + 4*u, hy - 6*u, x - 18*u, hy + 2*u); g.closePath(); g.fill(); g.stroke(); }
+  else if (lk.style === 2) { g.beginPath(); g.arc(x, hy - 24*u, 8*u, 0, Math.PI*2); g.fill(); g.stroke(); g.beginPath(); g.ellipse(x, hy - 8*u, 17.5*u, 11*u, 0, Math.PI, Math.PI*2); g.closePath(); g.fill(); g.stroke(); }
+  else if (lk.style === 3) { for (let a = 0; a < 7; a++) { const an = Math.PI + a * Math.PI / 6; g.beginPath(); g.arc(x + Math.cos(an) * 15*u, hy - 6*u + Math.sin(an) * 14*u, 6.5*u, 0, Math.PI*2); g.fill(); g.stroke(); } }
+  else if (lk.style === 4) { // кепка
+    g.fillStyle = lk.cap; g.beginPath(); g.ellipse(x, hy - 8*u, 18*u, 13*u, 0, Math.PI, Math.PI*2); g.closePath(); g.fill(); g.stroke();
+    rr(g, x - 2*u, hy - 11*u, 26*u, 6*u, 3*u); g.fill(); g.stroke();
+  }
+  // лицо
+  const mood = cu.state === 'happy' ? 1 : (cu.state === 'angry' || (cu.sayT > 0 && cu.say === 'Это не моё!')) ? -1 : (cu.patience / cu.max < 0.35 ? -0.5 : 0);
+  const blink = (Math.sin(clock * 1.7 + cu.id * 30) > 0.97);
+  const ey = hy + 1*u;
+  if (blink) { g.lineWidth = 2*u; g.beginPath(); g.moveTo(x - 9*u, ey); g.lineTo(x - 3*u, ey); g.moveTo(x + 3*u, ey); g.lineTo(x + 9*u, ey); g.stroke(); }
+  else {
+    g.fillStyle = '#fff'; g.beginPath(); g.ellipse(x - 6*u, ey, 4*u, 4.6*u, 0, 0, Math.PI*2); g.ellipse(x + 6*u, ey, 4*u, 4.6*u, 0, 0, Math.PI*2); g.fill();
+    g.lineWidth = 1.4*u; g.stroke();
+    g.fillStyle = INK; g.beginPath(); g.arc(x - 5.5*u, ey + 1.5*u, 2*u, 0, Math.PI*2); g.arc(x + 6.5*u, ey + 1.5*u, 2*u, 0, Math.PI*2); g.fill();
+  }
+  g.lineWidth = 2*u; g.strokeStyle = darken(lk.hair, 0);
+  const bro = mood < 0 ? 2.5 : 0;
+  g.beginPath(); g.moveTo(x - 10*u, ey - 7*u - bro*0.3*u); g.lineTo(x - 3*u, ey - 7*u + bro*u); g.moveTo(x + 10*u, ey - 7*u - bro*0.3*u); g.lineTo(x + 3*u, ey - 7*u + bro*u); g.stroke();
+  g.strokeStyle = INK;
+  g.beginPath(); g.moveTo(x, ey + 3*u); g.quadraticCurveTo(x + 3*u, ey + 7*u, x - 1*u, ey + 8*u); g.stroke(); // нос
+  g.fillStyle = 'rgba(255,120,110,.28)'; g.beginPath(); g.arc(x - 11*u, ey + 7*u, 3.5*u, 0, Math.PI*2); g.arc(x + 11*u, ey + 7*u, 3.5*u, 0, Math.PI*2); g.fill();
+  if (lk.beard) { g.fillStyle = lk.hair; g.beginPath(); g.moveTo(x - 15*u, hy + 4*u); g.quadraticCurveTo(x, hy + 30*u, x + 15*u, hy + 4*u); g.quadraticCurveTo(x, hy + 16*u, x - 15*u, hy + 4*u); g.fill(); g.lineWidth = 1.6*u; g.stroke(); }
+  g.lineWidth = 2*u; g.beginPath();
+  const my = hy + 12*u;
+  if (mood > 0) { g.arc(x, my - 2*u, 6*u, 0.15*Math.PI, 0.85*Math.PI); }
+  else if (mood <= -1) { g.arc(x, my + 6*u, 6*u, 1.2*Math.PI, 1.8*Math.PI); }
+  else if (mood < 0) { g.moveTo(x - 5*u, my + 1*u); g.quadraticCurveTo(x, my - 2*u, x + 5*u, my + 1*u); }
+  else { g.moveTo(x - 5*u, my); g.lineTo(x + 5*u, my); }
+  g.stroke();
+  if (lk.glasses) {
+    g.lineWidth = 1.8*u; g.strokeStyle = '#222';
+    g.beginPath(); g.arc(x - 6*u, ey, 6*u, 0, Math.PI*2); g.moveTo(x + 12*u, ey); g.arc(x + 6*u, ey, 6*u, 0, Math.PI*2);
+    g.moveTo(x - 0.5*u, ey); g.lineTo(x + 0.5*u, ey); g.stroke();
+  }
+  if (lk.style !== 4) { g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2.5*u; g.beginPath(); g.arc(x - 3*u, hy - 6*u, 12*u, 1.15*Math.PI, 1.45*Math.PI); g.stroke(); }
+  // несёт свою посылку
+  if (cu.hasBox && ['happy', 'toFitting', 'walkOut', 'queue', 'walkBack', 'verdict'].includes(cu.state)) {
+    const br = CONFIG.brands[cu.box.brand], bw_ = 34*u, bh_ = 26*u, bx = x - bw_/2, by = y0 - 40*u;
+    g.strokeStyle = INK; g.lineWidth = 2*u;
+    g.fillStyle = '#d9a066'; g.fillRect(bx, by, bw_, bh_); g.strokeRect(bx, by, bw_, bh_);
+    g.fillStyle = br.color; g.fillRect(x - 3*u, by, 6*u, bh_);
+    g.fillStyle = lk.skin;
+    g.beginPath(); g.arc(bx - 1*u, by + bh_*0.6, 5*u, 0, Math.PI*2); g.fill(); g.stroke();
+    g.beginPath(); g.arc(bx + bw_ + 1*u, by + bh_*0.6, 5*u, 0, Math.PI*2); g.fill(); g.stroke();
+  }
+  g.restore();
+}
+function drawHands(g, cu){ // руки на стойке у тех, кто ждёт у окна
+  if (!['wait', 'verdict', 'angry'].includes(cu.state) || (cu.hasBox && cu.state === 'verdict')) return;
+  const x = cu.x + Math.sin(clock * 50) * cu.shake * 4*u, y = L.counterY - 3*u;
+  g.save(); g.fillStyle = cu.look.skin; g.strokeStyle = INK; g.lineWidth = 2*u;
+  const tap = cu.state === 'wait' && cu.patience / cu.max < 0.35 ? Math.abs(Math.sin(clock * 9)) * 3*u : 0; // нетерпеливо стучит пальцами
+  g.beginPath(); g.ellipse(x - 24*u, y - tap, 7*u, 5*u, 0, 0, Math.PI*2); g.fill(); g.stroke();
+  g.beginPath(); g.ellipse(x + 24*u, y, 7*u, 5*u, 0, 0, Math.PI*2); g.fill(); g.stroke();
+  g.restore();
+}
+function drawFittingRoom(g){
+  const f = L.fit, cu = customers.find(c => c.state === 'fitting');
+  g.save();
+  // лампа «занято»
+  g.fillStyle = cu ? (Math.sin(clock * 6) > 0 ? '#ff3b2a' : '#b02a1e') : '#46d35a';
+  g.beginPath(); g.arc(f.x + f.w - 6*u, f.y - 12*u, 4*u, 0, Math.PI*2); g.fill(); g.strokeStyle = INK; g.lineWidth = 1.5*u; g.stroke();
+  if (cu) {
+    // тень и ботинки под шторкой, шторка шевелится
+    g.fillStyle = 'rgba(40,20,20,.25)'; g.beginPath(); g.ellipse(f.x + f.w/2 + Math.sin(clock * 3) * 4*u, f.y + f.h*0.5, 14*u, f.h*0.35, 0, 0, Math.PI*2); g.fill();
+    g.fillStyle = '#2b2f33';
+    rr(g, f.x + f.w/2 - 14*u, f.y + f.h - 6*u, 12*u, 6*u, 2*u); g.fill(); rr(g, f.x + f.w/2 + 2*u, f.y + f.h - 6*u, 12*u, 6*u, 2*u); g.fill();
+    const bw_ = 96*u, bx = clamp(f.x + f.w/2 - bw_/2, 6*u, W - bw_ - 6*u), by = f.y + 6*u;
+    g.fillStyle = '#fff'; rr(g, bx, by, bw_, 34*u, 9*u); g.fill(); g.strokeStyle = INK; g.lineWidth = 2*u; g.stroke();
+    g.fillStyle = INK; g.textAlign = 'center'; g.textBaseline = 'middle';
+    fitText(g, 'Переодеваюсь…', bw_ - 12*u, 12*u, DISPLAY); g.fillText('Переодеваюсь…', bx + bw_/2, by + 12*u);
+    g.fillStyle = 'rgba(28,22,16,.2)'; rr(g, bx + 8*u, by + 22*u, bw_ - 16*u, 5*u, 2.5*u); g.fill();
+    g.fillStyle = '#8a5cc7'; rr(g, bx + 8*u, by + 22*u, Math.max(5*u, (bw_ - 16*u) * clamp(cu.t / cu.dur, 0, 1)), 5*u, 2.5*u); g.fill();
+  }
+  g.restore();
+}
+function drawReturnBin(g){
+  const B = L.bin, lw = 3*u;
+  const over = held && held.ret && held.state === 'held' && inBin(pointer.x, pointer.y);
+  const anyRet = boxes.some(b => b.ret);
+  g.save();
+  g.fillStyle = '#d8432f'; rr(g, B.x, B.y, B.w, B.h, 6*u); g.fill();
+  g.strokeStyle = over ? '#ffd21f' : INK; g.lineWidth = over ? 5*u : lw; g.stroke();
+  g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 2*u;
+  for (let x = B.x + 12*u; x < B.x + B.w - 6*u; x += 12*u) { g.beginPath(); g.moveTo(x, B.y + 22*u); g.lineTo(x, B.y + B.h - 6*u); g.stroke(); }
+  // сложенные возвраты
+  for (let k = 0; k < Math.min(binCount, 4); k++) {
+    g.fillStyle = '#d9a066'; g.fillRect(B.x + 8*u + (k % 2) * 36*u, B.y - 12*u - Math.floor(k / 2) * 14*u, 32*u, 16*u);
+    g.strokeStyle = INK; g.lineWidth = 1.5*u; g.strokeRect(B.x + 8*u + (k % 2) * 36*u, B.y - 12*u - Math.floor(k / 2) * 14*u, 32*u, 16*u);
+  }
+  g.fillStyle = '#fff4e2'; rr(g, B.x + 6*u, B.y + 5*u, B.w - 12*u, 15*u, 4*u); g.fill();
+  g.fillStyle = INK; g.textAlign = 'center'; g.textBaseline = 'middle';
+  fitText(g, 'ВОЗВРАТ', B.w - 20*u, 11*u, DISPLAY); g.fillText('ВОЗВРАТ', B.x + B.w/2, B.y + 13*u);
+  if (anyRet && Math.sin(clock * 6) > 0) { g.strokeStyle = '#ffd21f'; g.lineWidth = 3*u; g.setLineDash([5*u, 4*u]); rr(g, B.x - 5*u, B.y - 5*u, B.w + 10*u, B.h + 10*u, 9*u); g.stroke(); }
+  g.restore();
+}
+function drawReturnTags(g){
+  for (const b of boxes) {
+    if (b.state !== 'returned') continue;
+    const y = b.y - bh(b)*0.4 - 16*u;
+    g.fillStyle = '#d8432f'; rr(g, b.x - 34*u, y - 9*u, 68*u, 18*u, 5*u); g.fill(); g.strokeStyle = INK; g.lineWidth = 2*u; g.stroke();
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    fitText(g, 'ВОЗВРАТ ↓', 60*u, 10*u, DISPLAY); g.fillText('ВОЗВРАТ ↓', b.x, y + 1*u);
+  }
+}
+function drawBubble(g, cu){
+  if (['walkIn', 'walkOut', 'toFitting', 'fitting', 'walkBack'].includes(cu.state)) return;
+  const br = CONFIG.brands[cu.want.brand];
+  const bw_ = Math.min(108*u, W / (def.windows + 1) * 1.1 - 6*u), bh_ = 56*u;
+  const bx = clamp(cu.x - bw_/2, 6*u, W - bw_ - 6*u), by = L.counterY - 178*u;
+  g.save();
+  g.fillStyle = '#ffffff'; rr(g, bx, by, bw_, bh_, 10*u); g.fill();
+  g.beginPath(); g.moveTo(cu.x - 7*u, by + bh_ - 1); g.lineTo(cu.x + 7*u, by + bh_ - 1); g.lineTo(cu.x, by + bh_ + 10*u); g.closePath(); g.fill();
+  g.strokeStyle = INK; g.lineWidth = 2.5*u; rr(g, bx, by, bw_, bh_, 10*u); g.stroke();
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  if (cu.sayT > 0 || cu.state !== 'wait') {
+    g.fillStyle = (cu.state === 'happy' || cu.state === 'queue' || (cu.state === 'verdict' && cu.liked)) ? '#2f8f4e' : '#c0392b';
+    fitText(g, cu.say, bw_ - 12*u, 15*u, DISPLAY); g.fillText(cu.say, bx + bw_/2, by + bh_/2 + 1*u);
+  } else {
+    g.fillStyle = br.color; rr(g, bx + 6*u, by + 6*u, bw_ - 12*u, 14*u, 4*u); g.fill();
+    g.fillStyle = br.text; fitText(g, br.name, bw_ - 20*u, 10*u, DISPLAY); g.fillText(br.name, bx + bw_/2, by + 13.5*u);
+    g.fillStyle = INK; fitText(g, '№ ' + cu.want.num, bw_ - 16*u, 20*u, DISPLAY); g.fillText('№ ' + cu.want.num, bx + bw_/2, by + 32*u);
+    // терпение
+    const f = clamp(cu.patience / cu.max, 0, 1);
+    g.fillStyle = 'rgba(28,22,16,.2)'; rr(g, bx + 8*u, by + bh_ - 11*u, bw_ - 16*u, 6*u, 3*u); g.fill();
+    g.fillStyle = f > 0.5 ? '#3fbf5a' : f > 0.25 ? '#ffb02a' : '#ff4d3d'; rr(g, bx + 8*u, by + bh_ - 11*u, Math.max(6*u, (bw_ - 16*u) * f), 6*u, 3*u); g.fill();
+  }
+  g.restore();
+}
+function drawCounter(g){
+  const y = L.counterY, lw = 3*u;
+  // стеклянные перегородки между окнами
+  for (let i = 0; i < def.windows - 1; i++) {
+    const x = (windowX(i) + windowX(i + 1)) / 2;
+    g.fillStyle = 'rgba(190,225,240,.35)'; g.fillRect(x - 3*u, y - 120*u, 6*u, 120*u);
+    g.strokeStyle = 'rgba(58,36,24,.5)'; g.lineWidth = 1.5*u; g.strokeRect(x - 3*u, y - 120*u, 6*u, 120*u);
+  }
+  const grd = g.createLinearGradient(0, y - 6*u, 0, y + 40*u);
+  grd.addColorStop(0, '#c98f55'); grd.addColorStop(0.3, '#a8713c'); grd.addColorStop(1, '#7d5230');
+  g.fillStyle = grd; g.fillRect(0, y - 6*u, W, 46*u);
+  g.fillStyle = '#e3b479'; g.fillRect(0, y - 6*u, W, 8*u);
+  g.strokeStyle = INK; g.lineWidth = lw; g.strokeRect(-4, y - 6*u, W + 8, 46*u);
+  g.beginPath(); g.moveTo(0, y + 2*u); g.lineTo(W, y + 2*u); g.lineWidth = lw*0.6; g.stroke();
+  for (let i = 0; i < def.windows; i++) {
+    const x = windowX(i);
+    g.fillStyle = '#fff4e2'; rr(g, x - 26*u, y + 12*u, 52*u, 20*u, 5*u); g.fill(); g.strokeStyle = INK; g.lineWidth = 2*u; g.stroke();
+    g.fillStyle = INK; g.textAlign = 'center'; g.textBaseline = 'middle';
+    fitText(g, 'ОКНО ' + (i + 1), 44*u, 11*u, DISPLAY); g.fillText('ОКНО ' + (i + 1), x, y + 22.5*u);
+  }
+  // подсветка окна, куда можно отдать коробку
+  if (held && held.state === 'held') {
+    const cu = customerAt(held.x, held.y);
+    if (cu) { g.strokeStyle = '#ffd21f'; g.lineWidth = 4*u; rr(g, cu.x - 40*u, y - 104*u, 80*u, 104*u, 12*u); g.stroke(); }
+  }
+}
+function spawnMain(){
+  const p = Math.min(1, elapsed / 30);              // тяжёлые появляются постепенно в первые 30 сек
+  const bigP = def.bigChance * p;
+  const r = Math.random();
+  newBox(r < bigP ? 2 : r < bigP + def.mediumChance ? 1 : 0, 0);
+}
+function canSpawn(i){
+  for (const b of boxes) {
+    if (b.belt !== i || (b.state !== 'belt' && b.state !== 'lifting')) continue;
+    if (i === 0 && b.x - bw(b) / 2 < L.hatchW * 0.5 + 14*u) return false;
+    if (i === 1 && b.x + bw(b) / 2 > W - L.hatchW * 0.5 - 14*u) return false;
+  }
+  return true;
+}
+function hiddenInHatch(b){ return b.belt === 0 ? b.x < L.hatchW * 0.7 : b.x > W - L.hatchW * 0.7; }
+
+function loseLife(text, x, y){
+  lives--; streak = 0; flash = 1; shake = 1;
+  popups.push({ x, y, text, color: '#ff5a3c', t: 0 });
+  if (lives <= 0 && overTimer < 0) overTimer = 0.9;
+}
+
+// ===== Ввод =====
+function pos(e){ const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+cv.addEventListener('pointerdown', e => {
+  if (mode !== 'play' || held || toolHeld || heldHelper || cartDrag || overTimer >= 0) return;
+  ensureAudio();
+  const p = pos(e), pad = 12 * u;
+  if (def.mode === 'pickup') { pickupPointerDown(p, e); return; }
+  // гаечный ключ-помощник
+  for (const hp of helpers) {
+    if (hp.state === 'shelf' && Math.abs(p.x - hp.x) < 34*u && Math.abs(p.y - hp.y) < 22*u) {
+      heldHelper = hp; hp.state = 'held'; pointer = p; sfx.toolPick();
+      try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault(); return;
+    }
+  }
+  // отвёртка на стеллаже
+  if (tool.state === 'shelf' && Math.abs(p.x - tool.x) < 36*u && Math.abs(p.y - tool.y) < 24*u) {
+    toolHeld = true; tool.state = 'held'; pointer = p; sfx.toolPick();
+    try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+    e.preventDefault(); return;
+  }
+  // тележка: потянуть вниз, чтобы отправить
+  for (const c of carts) {
+    if (c.leaving) continue;
+    if (p.x > c.x && p.x < c.x + c.w && p.y > L.cartTop - 10*u && p.y < L.cartBase + 10*u) {
+      cartDrag = { c, y0: p.y, ly: p.y, lt: performance.now() }; pointer = p;
+      dragSoundStart(); tone(700, 500, 0.05, 'triangle', 0.03);
+      try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+      e.preventDefault(); return;
+    }
+  }
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const b = boxes[i];
+    if (b.state !== 'belt' || hiddenInHatch(b)) continue;
+    if (Math.abs(p.x - b.x) < bw(b)/2 + pad && Math.abs(p.y - b.y) < bh(b)/2 + pad) {
+      held = b; pointer = p;
+      b.lift = 0; b.vx = 0; b.vy = 0;
+      b.state = CONFIG.sizes[b.s].lift > 0 ? 'lifting' : 'held';
+      boxes.splice(i, 1); boxes.push(b);
+      try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+      sfx.pick(b.s);
+      e.preventDefault();
+      return;
+    }
+  }
+});
+cv.addEventListener('pointermove', e => {
+  if (held || toolHeld || heldHelper) pointer = pos(e);
+  if (cartDrag) {
+    const p = pos(e), now = performance.now();
+    const prev = cartDrag.c.dragY || 0;
+    cartDrag.c.dragY = clamp(p.y - cartDrag.y0, -8*u, 80*u);
+    const dtm = Math.max(8, now - cartDrag.lt);
+    dragSoundSet(Math.abs(cartDrag.c.dragY - prev) / dtm * 1000 / u);
+    cartDrag.lt = now;
+  }
+});
+function sendCart(c){
+  const full = cartFill(c) >= CONFIG.fullAt;
+  c.leaving = true; c.lt = 0;
+  c.sendPts = c.items.reduce((a, it) => a + CONFIG.sizes[it.s].points, 0) + (full ? CONFIG.cartBonus : 0);
+  c.sendFull = full; sfx.cartSend();
+  // грузчик разбирает тележку: чем больше килограммов, тем дольше её нет
+  c.sendKg = c.items.reduce((a, it) => a + (it.kg || 0), 0);
+  c.away = clamp(CONFIG.unloadBase + c.sendKg * CONFIG.unloadPerKg, CONFIG.unloadBase, CONFIG.unloadMax);
+}
+function cartUnder(b){
+  const h = bh(b);
+  return carts.find(c => !c.leaving && b.x > c.x && b.x < c.x + c.w && b.y + h/2 > L.cartTop - 60*u);
+}
+function release(){
+  if (heldHelper) {
+    const hp = heldHelper; heldHelper = null;
+    const P = L.panel;
+    const onPanel = Math.abs(hp.x - P.x) < P.w/2 + 26*u && hp.y > P.y - 40*u && hp.y < P.y + P.h + 26*u;
+    if (onPanel && !broken.active) { hp.state = 'using'; hp.t = 0; hp.tick = 0.15; sfx.toolIn(); }
+    else {
+      if (onPanel) popups.push({ x: P.x, y: P.y - 20*u, text: 'Сначала почини отвёрткой', color: '#fff4e2', t: 0 });
+      hp.state = 'returning'; hp.t = 0; hp.sx = hp.x; hp.sy = hp.y;
+    }
+    return;
+  }
+  if (toolHeld) {
+    toolHeld = false;
+    const P = L.panel;
+    if (broken.active && Math.abs(tool.x - P.x) < P.w/2 + 26*u && tool.y > P.y - 40*u && tool.y < P.y + P.h + 26*u) {
+      tool.state = 'using'; tool.t = 0; tool.tick = 0.15; sfx.toolIn();
+    } else { tool.state = 'returning'; tool.t = 0; tool.sx = tool.x; tool.sy = tool.y; }
+    return;
+  }
+  if (cartDrag) {
+    const c = cartDrag.c; cartDrag = null; dragSoundStop();
+    if (c.dragY > 30*u && c.items.length) sendCart(c);
+    else {
+      if (c.dragY > 30*u) popups.push({ x: c.x + c.w/2, y: L.cartTop - 20*u, text: 'Пустая', color: '#fff4e2', t: 0 });
+      if ((c.dragY || 0) > 6*u) sfx.cartSnap();
+    }
+    return;
+  }
+  const b = held; if (!b) return; held = null;
+  if (def.mode === 'pickup') { pickupRelease(b); return; }
+  if (b.state === 'lifting') { b.state = 'belt'; b.y = belts[b.belt].y - bh(b)/2; sfx.back(); return; }
+  if (b.state !== 'held') return;
+  const h = bh(b), w = bw(b);
+  const c = cartUnder(b);
+  const spot = c && c.brand === b.brand ? landSpot(c, b.s, b.x - c.x) : null;
+  if (spot && spot.over) {
+    overflow(c, b);
+  } else if (c) {
+    if (c.brand === b.brand) {
+      b.state = 'dropping'; b.t = 0; b.cart = c; b.spot = spot; b.sx = b.x; b.sy = b.y;
+    } else {
+      b.state = 'reject'; b.vy = -520*u; b.vx = (b.x < W/2 ? 1 : -1) * 160*u; b.va = rand(-6, 6);
+      c.no = 1; sfx.wrong(); dropped++;
+      loseLife('Не тот магазин!', b.x, L.cartTop - 30*u);
+    }
+  } else {
+    const away = carts.find(k => k.leaving && k.brand === b.brand && b.x > k.x && b.x < k.x + k.w && b.y + h/2 > L.cartTop - 60*u);
+    if (away) popups.push({ x: away.x + away.w/2, y: L.cartTop - 30*u, text: 'На разгрузке — верни на ленту', color: '#fff4e2', t: 0 });
+    let bi = 0;
+    if (beltActive(1) && Math.abs(b.y - belts[1].y) < Math.abs(b.y - belts[0].y)) bi = 1;
+    b.belt = bi;
+    b.state = 'returning'; b.t = 0; b.sx = b.x; b.sy = b.y;
+    b.tx = bi === 0 ? clamp(b.x, L.hatchW + w/2 + 4*u, belts[0].end - w/2 - 6*u)
+                    : clamp(b.x, belts[1].end + w/2 + 6*u, W - L.hatchW - w/2 - 4*u);
+    b.ty = belts[bi].y - h/2;
+  }
+}
+function overflow(c, b){
+  // перегруз: новая посылка отскакивает, а верхняя вываливается из тележки
+  b.state = 'reject'; b.x = c.x + c.w/2; b.y = L.cartTop - 14*u; b.sc = 1;
+  b.vy = -460*u; b.vx = rand(-1, 1) * 180*u; b.va = rand(-7, 7);
+  spillTop(c);
+  c.no = 1; c.bump = 1; sfx.overload(); dropped++;
+  loseLife('Перегруз! Смахни тележку ↓', c.x + c.w/2, L.cartTop - 40*u);
+}
+cv.addEventListener('pointerup', release);
+cv.addEventListener('pointercancel', release);
+cv.addEventListener('contextmenu', e => e.preventDefault());
+
+function shuffleCarts(){
+  const n = carts.length;
+  const a = (Math.random() * n) | 0; let b = (Math.random() * (n - 1)) | 0; if (b >= a) b++;
+  const t = carts[a].slot; carts[a].slot = carts[b].slot; carts[b].slot = t;
+  layoutCarts(false);
+  sfx.swap();
+  popups.push({ x: W/2, y: L.cartTop - 50*u, text: 'Тележки поменялись!', color: '#ffd21f', t: 0 });
+}
+
+// ===== Поломка конвейера =====
+function placeTool(){
+  const blocked = y => {
+    if (y < L.hud + 60*u || y > L.floorY - 4*u) return true;
+    for (let i = 0; i < 2; i++) {
+      if (i === 1 && !def.belt2) continue;
+      const by = belts[i].y;
+      if (y > by - 150*u && y < by + L.beltH + 20*u) return true;
+    }
+    return false;
+  };
+  const cands = L.shelves.filter(y => !blocked(y));
+  const y = cands.length ? cands[(Math.random() * cands.length) | 0] : L.shelves[L.shelves.length - 1];
+  let x = rand(L.hatchW + 40*u, W - L.hatchW - 40*u);
+  if (Math.abs(x - L.panel.x) < 60*u && Math.abs(y - L.panel.y) < 80*u) x = rand(L.hatchW + 30*u, L.panel.x - 70*u);
+  { const sp = freeShelfSpot(helpers.filter(h => h.state === 'shelf')); x = sp.x; tool.homeY = sp.y; }
+  tool.homeX = x; tool.x = x; tool.y = tool.homeY; tool.ang = rand(-0.12, 0.12); tool.state = 'shelf';
+}
+function burstSparks(x, y, n){
+  for (let k = 0; k < n; k++)
+    particles.push({ kind: 'spark', x, y, vx: rand(-140, 140)*u, vy: -rand(40, 180)*u, r: 0, life: rand(0.25, 0.45), max: 0.45 });
+}
+function freeShelfSpot(taken){
+  const blocked = y => {
+    if (y < L.hud + 60*u || y > L.floorY - 4*u) return true;
+    for (let i = 0; i < 2; i++) {
+      if (i === 1 && !def.belt2) continue;
+      const by = belts[i].y;
+      if (y > by - 150*u && y < by + L.beltH + 20*u) return true;
+    }
+    return false;
+  };
+  const ys = L.shelves.filter(y => !blocked(y));
+  const pool = ys.length ? ys : [L.shelves[L.shelves.length - 1]];
+  for (let k = 0; k < 40; k++) {
+    const y = pool[(Math.random() * pool.length) | 0] - 7*u;
+    const x = rand(L.hatchW + 30*u, W - L.hatchW - 30*u);
+    if (Math.abs(x - L.panel.x) < 60*u && Math.abs(y - L.panel.y) < 80*u) continue;
+    if (taken.some(t => Math.abs(t.x - x) < 64*u && Math.abs(t.y - y) < 20*u)) continue;
+    return { x, y };
+  }
+  return { x: rand(L.hatchW + 30*u, W - L.hatchW - 30*u), y: pool[0] - 7*u };
+}
+function placeHelpers(n){
+  helpers = [];
+  for (let i = 0; i < n; i++) {
+    const sp = freeShelfSpot(helpers);
+    helpers.push({ state: 'shelf', x: sp.x, y: sp.y, homeX: sp.x, homeY: sp.y, ang: rand(-0.15, 0.15), t: 0, tick: 0, sx: 0, sy: 0, ph: Math.random() * 6 });
+  }
+}
+function startBreak(){
+  broken.active = true; broken.t = CONFIG.repairTime; broken.alarm = 0.6; broken.puff = 0;
+  placeTool(); sfx.breakdown(); crackle(14, 0.45); shake = 0.7;
+  for (let k = 0; k < 4; k++) burstSparks(rand(L.hatchW + 30*u, belts[0].end - 20*u), belts[0].y + L.beltH*0.5, 9);
+  burstSparks(L.panel.x, L.panel.y + 10*u, 12);
+  popups.push({ x: W/2, y: belts[0].y - 40*u, text: 'Конвейер сломался!', color: '#ff5a3c', t: 0 });
+}
+function endBreak(fixed){
+  broken.active = false; tool.state = 'hidden'; toolHeld = false;
+  if (fixed) {
+    sfx.fixed(); score += CONFIG.repairBonus;
+    popups.push({ x: L.panel.x, y: L.panel.y - 20*u, text: 'Починил! +' + CONFIG.repairBonus, color: '#5fdc6a', t: 0 });
+  }
+}
+
+// ===== Обновление =====
+function update(dt){
+  clock += dt;
+  flash = Math.max(0, flash - dt * 2.5);
+  shake = Math.max(0, shake - dt * 3);
+  updateHum();
+  for (const c of carts) {
+    c.x += (c.tx - c.x) * Math.min(1, dt * 6);
+    if (!(cartDrag && cartDrag.c === c) && !c.leaving) c.dragY = (c.dragY || 0) * Math.pow(0.0005, dt);
+  }
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+    if (p.kind === 'spark') p.vy += 700 * u * dt; else p.r += 14 * u * dt;
+    if (p.life <= 0) particles.splice(i, 1);
+  }
+  if (mode !== 'play') return;
+
+  // поломка
+  if (overTimer < 0 && !broken.active && breakQueue.length && elapsed >= breakQueue[0]) { breakQueue.shift(); startBreak(); }
+  if (broken.active) {
+    broken.t -= dt; broken.alarm -= dt; broken.puff -= dt;
+    if (broken.alarm <= 0) { sfx.alarm(); broken.alarm = 1.3; }
+    if (broken.puff <= 0) {
+      broken.puff = 0.12;
+      const P = L.panel;
+      particles.push({ kind: 'smoke', x: P.x + rand(-12, 12)*u, y: P.y, vx: rand(-12, 12)*u, vy: -rand(30, 60)*u, r: rand(5, 9)*u, life: 1.2, max: 1.2 });
+      if (Math.random() < 0.3) { burstSparks(P.x, P.y + 10*u, 5); sfx.sparks(); }
+      // искры из самого конвейера: между роликами и с ленты
+      if (Math.random() < 0.22) {
+        const bx = rand(L.hatchW + 30*u, belts[0].end - 20*u);
+        burstSparks(bx, belts[0].y + L.beltH * 0.5, 7);
+        particles.push({ kind: 'smoke', x: bx, y: belts[0].y, vx: 0, vy: -rand(20, 40)*u, r: rand(4, 7)*u, life: 0.9, max: 0.9 });
+        sfx.sparks();
+      }
+    }
+    if (broken.t <= 0 && tool.state !== 'using') {
+      loseLife('Не успел починить!', W/2, belts[0].y - 60*u);
+      endBreak(false);
+    }
+  }
+  // замедление ленты
+  if (slowT > 0) { slowT -= dt; if (slowT <= 0) { slowT = 0; sfx.slowOff(); popups.push({ x: W/2, y: belts[0].y - 50*u, text: 'Лента снова быстрая', color: '#fff4e2', t: 0 }); } }
+  // гаечные ключи
+  for (const hp of helpers) {
+    if (hp.state === 'held') {
+      const f = dt * 60;
+      hp.x += (pointer.x - hp.x) * Math.min(1, 0.35 * f); hp.y += (pointer.y - 12*u - hp.y) * Math.min(1, 0.35 * f);
+      hp.ang += (0.7 - hp.ang) * Math.min(1, 0.2 * f);
+    } else if (hp.state === 'returning') {
+      hp.t = Math.min(1, hp.t + dt / 0.35);
+      const e = ease(hp.t);
+      hp.x = lerp(hp.sx, hp.homeX, e); hp.y = lerp(hp.sy, hp.homeY, e) - Math.sin(hp.t * Math.PI) * 25*u;
+      hp.ang = lerp(hp.ang, 0, e);
+      if (hp.t >= 1) { hp.state = 'shelf'; sfx.toolBack(); }
+    } else if (hp.state === 'using') {
+      hp.t += dt; hp.tick -= dt;
+      const P = L.panel;
+      hp.x = P.x - 14*u; hp.y = P.y + P.h*0.62 - 6*u;
+      hp.ang = -0.6 + Math.sin(hp.t * 14) * 0.5;
+      if (hp.tick <= 0) { sfx.ratchet(); hp.tick = 0.13; }
+      if (hp.t >= 0.6) {
+        hp.state = 'gone'; slowT += CONFIG.slowTime; sfx.slowOn();
+        popups.push({ x: W/2, y: belts[0].y - 50*u, text: 'Лента медленнее · ' + CONFIG.slowTime + ' сек', color: '#7fc4ff', t: 0 });
+      }
+    }
+  }
+  // отвёртка
+  if (tool.state === 'held') {
+    const f = dt * 60;
+    tool.x += (pointer.x - tool.x) * Math.min(1, 0.35 * f);
+    tool.y += (pointer.y - 12*u - tool.y) * Math.min(1, 0.35 * f);
+    tool.ang += (0.7 - tool.ang) * Math.min(1, 0.2 * f);
+  } else if (tool.state === 'returning') {
+    tool.t = Math.min(1, tool.t + dt / 0.35);
+    const e = ease(tool.t);
+    tool.x = lerp(tool.sx, tool.homeX, e); tool.y = lerp(tool.sy, tool.homeY, e) - Math.sin(tool.t * Math.PI) * 25*u;
+    tool.ang = lerp(tool.ang, 0, e);
+    if (tool.t >= 1) { tool.state = broken.active ? 'shelf' : 'hidden'; sfx.toolBack(); }
+  } else if (tool.state === 'using') {
+    tool.t += dt; tool.tick -= dt;
+    const P = L.panel, len = 46*u;
+    tool.x = P.x; tool.y = P.y + P.h*0.62 - len*0.58;
+    tool.ang = Math.PI/2 + Math.sin(tool.t * 30) * 0.15;
+    if (tool.tick <= 0) { sfx.ratchet(); tool.tick = 0.11; }
+    if (tool.t >= 0.9) endBreak(true);
+  }
+
+  if (overTimer >= 0) { overTimer -= dt; if (overTimer < 0) { finishLevel(false); return; } }
+  else {
+    const prevLeft = Math.ceil(def.time - elapsed);
+    elapsed += dt;
+    const left = Math.ceil(def.time - elapsed);
+    if (left !== prevLeft && left <= 5 && left > 0) sfx.tick();
+    if (elapsed >= def.time) { finishLevel(true); return; }
+    const p = elapsed / def.time;
+    speed = lerp(def.speedStart, def.speedEnd, p);
+    spawnTimer -= dt * slowK();
+    if (def.mode === 'sort' && !broken.active && elapsed > 1.2 && spawnTimer <= 0 && canSpawn(0) && def.time - elapsed > 3) {
+      spawnMain();
+      spawnTimer = lerp(def.spawnStart, def.spawnEnd, p);
+    }
+    if (def.belt2 && elapsed > 2.5 && def.time - elapsed > 4) {
+      spawnTimer2 -= dt * slowK();
+      if (spawnTimer2 <= 0 && canSpawn(1)) { newBox(2, 1); spawnTimer2 = lerp(def.belt2Spawn[0], def.belt2Spawn[1], p); }
+    }
+    if (def.mode === 'pickup') updatePickup(dt);
+    if (def.shuffle) { shuffleTimer -= dt; if (shuffleTimer <= 0) { shuffleCarts(); shuffleTimer = def.shuffle; } }
+  }
+  const vs = [broken.active ? 0 : speed * u * slowK(), speed * u * 0.8 * slowK()];
+  beltPos[0] += vs[0] * dt;
+  if (def.belt2) beltPos[1] += vs[1] * dt;
+  const f = dt * 60;
+
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const b = boxes[i], S = CONFIG.sizes[b.s], w = bw(b), h = bh(b), belt = belts[b.belt];
+    switch (b.state) {
+      case 'belt': {
+        if (overTimer < 0) b.x += vs[b.belt] * belt.dir * dt;
+        b.y = belt.y - h/2; b.ang *= 0.8;
+        // посылка постукивает на роликах
+        b.roll = (b.roll || 0) + vs[b.belt] * dt;
+        if (b.roll > 68*u) { b.roll -= 68*u; if (!hiddenInHatch(b)) sfx.roller(b.s); }
+        const off = belt.dir > 0 ? b.x - w*0.1 > belt.end : b.x + w*0.1 < belt.end;
+        if (off) {
+          b.state = 'off'; b.vy = -40*u; b.vx = vs[b.belt] * 0.6 * belt.dir; b.va = 2.5 * belt.dir;
+          sfx.fall(); dropped++; loseLife('Упала!', belt.end - 40*u*belt.dir, belt.y - 60*u);
+        }
+        break;
+      }
+      case 'lifting':
+        b.lift += dt;
+        b.y = (b.baseY !== undefined ? b.baseY : belt.y - h/2) - (b.lift / S.lift) * 8*u;
+        if (b.lift >= S.lift) { b.state = 'held'; sfx.lifted(); }
+        break;
+      case 'held': {
+        const tx = pointer.x, ty = pointer.y - h * 0.55 + S.sag * u;
+        b.vx += (tx - b.x) * S.k * f; b.vy += (ty - b.y) * S.k * f;
+        const d = Math.pow(S.damp, f); b.vx *= d; b.vy *= d;
+        b.x += b.vx * f; b.y += b.vy * f;
+        b.x = clamp(b.x, w/2, W - w/2); b.y = clamp(b.y, L.hud + h/2, H - h/2);
+        b.ang = clamp(-b.vx * 0.012 * S.swing / u, -0.55, 0.55);
+        break;
+      }
+      case 'returning': {
+        b.t = Math.min(1, b.t + dt / 0.3);
+        const e = ease(b.t);
+        b.x = b.sx + (b.tx - b.sx) * e;
+        b.y = b.sy + (b.ty - b.sy) * e - Math.sin(b.t * Math.PI) * 30*u;
+        b.ang *= 0.85;
+        if (b.t >= 1) { b.state = 'belt'; sfx.back(); }
+        break;
+      }
+      case 'dropping': {
+        b.t = Math.min(1, b.t + dt / 0.18);
+        const e = b.t * b.t, c = b.cart, G = cartGeom(c);
+        b.x = b.sx + (c.x + b.spot.cx - b.sx) * e;
+        b.y = b.sy + (G.cageB - b.spot.land - b.spot.h/2 - b.sy) * e; b.ang *= 0.7;
+        if (b.t >= 1) {
+          const spot = landSpot(c, b.s, b.spot.cx);   // место могли занять, пока коробка летела
+          if (b.noScore) { // выдача: просто положили обратно
+            addItemAt(c, b.s, b.brand, b.kg, spot, b.num); c.bump = 0.4 + b.s * 0.3; sfx.drop(b.s); boxes.splice(i, 1); break;
+          }
+          if (spot.over) { overflow(c, b); break; }
+          addItemAt(c, b.s, b.brand, b.kg, spot); c.bump = 0.55 + b.s * 0.4;
+          streak++; sorted++;
+          const mult = Math.min(4, 1 + Math.floor(streak / 5));
+          const pts = S.points * mult;
+          score += pts;
+          popups.push({ x: c.x + c.w/2, y: L.cartTop - 14*u, text: '+' + pts + (mult > 1 ? ' ×' + mult : ''), color: CONFIG.brands[c.brand].color, t: 0 });
+          sfx.drop(b.s);
+          boxes.splice(i, 1);
+        }
+        break;
+      }
+      case 'returned': b.y = L.counterY - bh(b)*0.8/2 - 4*u + Math.sin(clock * 3 + b.id) * 0.6*u; break;
+      case 'given': {
+        b.t = Math.min(1, b.t + dt / 0.35);
+        const e = ease(b.t);
+        b.x = lerp(b.sx, b.tx, e); b.y = lerp(b.sy, b.ty, e) - Math.sin(b.t * Math.PI) * 30*u;
+        b.sc = lerp(1, 0.55, e); b.alpha = 1 - Math.max(0, b.t - 0.6) / 0.4;
+        if (b.t >= 1) boxes.splice(i, 1);
+        break;
+      }
+      case 'off': case 'reject':
+        b.vy += 1700 * u * dt; b.x += b.vx * dt; b.y += b.vy * dt; b.ang += b.va * dt;
+        if (b.state === 'reject') b.alpha = Math.max(0, b.alpha - dt * 1.2);
+        if (b.y > H + 120*u || b.alpha <= 0) boxes.splice(i, 1);
+        break;
+    }
+  }
+
+  for (const c of carts) {
+    c.bump = Math.max(0, c.bump - dt * 1.3);
+    c.no = Math.max(0, c.no - dt * 2.2);
+    if (c.leaving) {
+      const before = c.lt; c.lt += dt;
+      const backAt = 0.45 + c.away;              // уехала → разгружают → возвращается
+      if (before < 0.45 && c.lt >= 0.45 && c.refill) c.items = [];
+      else if (before < 0.45 && c.lt >= 0.45) {
+        const full = c.sendFull, pts = c.sendPts;
+        c.items = []; score += pts; if (full) sfx.bonus();
+        popups.push({ x: c.x + c.w/2, y: L.cartTop - 40*u, text: (full ? 'Полная! +' : 'Отправлено +') + pts, color: '#ffd21f', t: 0 });
+      }
+      if (before < backAt && c.lt >= backAt) { sfx.cartBack(); if (c.refill) { fillCart(c, def.boxesPerCart); c.refill = false; } }
+      if (c.lt >= backAt + 0.45) { c.leaving = false; c.dragY = 0; }
+    }
+  }
+  for (let i = popups.length - 1; i >= 0; i--) { popups[i].t += dt; if (popups[i].t > 1.1) popups.splice(i, 1); }
+}
+
+// ===== Рисование коробки =====
+function jitter(b){
+  const S = CONFIG.sizes[b.s];
+  let a = 0;
+  if (b.state === 'lifting') a = S.shakeLift * (0.6 + 0.4 * (b.lift / S.lift));
+  else if (b.state === 'held') a = S.shakeHeld;
+  if (!a) return [0, 0, 0];
+  a *= u;
+  const t = clock, p = b.id;
+  return [
+    (Math.sin(t * 57 + p) + Math.sin(t * 91.7 + p * 2)) * 0.5 * a,
+    (Math.sin(t * 63.3 + p * 3) + Math.sin(t * 43.1 + p)) * 0.35 * a,
+    Math.sin(t * 49 + p) * a * 0.012 / u,
+  ];
+}
+function drawBox(g, b, x, y, scale = 1, withShadow = false){
+  const S = CONFIG.sizes[b.s], br = CONFIG.brands[b.brand];
+  const w = S.w * u * scale, h = S.h * u * scale, lw = 2.6 * u * Math.max(0.6, scale);
+  const d = Math.min(w, h) * 0.2, dy = d * 0.65;
+  const [jx, jy, ja] = scale === 1 ? jitter(b) : [0, 0, 0];
+  g.save(); g.translate(x + jx, y + jy); g.rotate((b.ang || 0) + ja); g.globalAlpha = b.alpha ?? 1;
+  const X0 = -w/2, T = -h/2, X1 = w/2, B = h/2;
+  if (withShadow) { g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(d*0.4, B + 1*u, w*0.55, 4*u, 0, 0, Math.PI*2); g.fill(); }
+  g.lineJoin = 'round'; g.strokeStyle = INK;
+  g.beginPath(); g.moveTo(X1, T); g.lineTo(X1 + d, T - dy); g.lineTo(X1 + d, B - dy); g.lineTo(X1, B); g.closePath();
+  g.fillStyle = '#a8713c'; g.fill(); g.lineWidth = lw; g.stroke();
+  g.beginPath(); g.moveTo(X0, T); g.lineTo(X0 + d, T - dy); g.lineTo(X1 + d, T - dy); g.lineTo(X1, T); g.closePath();
+  g.fillStyle = '#e8bb80'; g.fill(); g.stroke();
+  const tw = w * 0.17;
+  g.beginPath(); g.moveTo(-tw/2, T); g.lineTo(-tw/2 + d, T - dy); g.lineTo(tw/2 + d, T - dy); g.lineTo(tw/2, T); g.closePath();
+  g.fillStyle = br.color; g.fill();
+  g.lineWidth = lw * 0.5; g.beginPath(); g.moveTo(X0 + d*0.5, T - dy*0.5); g.lineTo(X1 + d*0.5, T - dy*0.5);
+  g.strokeStyle = 'rgba(58,36,24,.45)'; g.stroke(); g.strokeStyle = INK;
+  const grd = g.createLinearGradient(0, T, 0, B);
+  grd.addColorStop(0, '#dfa86c'); grd.addColorStop(1, '#c48a50');
+  g.fillStyle = grd; g.fillRect(X0, T, w, h);
+  if (scale === 1) {
+    g.strokeStyle = 'rgba(90,55,25,.09)'; g.lineWidth = 1*u;
+    for (let gx = X0 + 4*u; gx < X1; gx += 4*u) { g.beginPath(); g.moveTo(gx, T); g.lineTo(gx, B); g.stroke(); }
+  }
+  g.fillStyle = br.color; g.fillRect(-tw/2, T, tw, h * 0.3);
+  g.fillStyle = 'rgba(255,255,255,.28)'; g.fillRect(-tw/2 + tw*0.15, T, tw*0.18, h * 0.3);
+  const lw_ = w * (b.num ? 0.8 : 0.74), lh = h * (b.num ? 0.58 : 0.5), lx = -lw_/2, ly = T + h * (b.num ? 0.34 : 0.36);
+  g.fillStyle = '#fbf8f1'; g.fillRect(lx, ly, lw_, lh);
+  const band = lh * (b.num ? 0.4 : 0.56);
+  g.fillStyle = br.color; g.fillRect(lx, ly, lw_, band);
+  if (scale > 0.7) {
+    g.fillStyle = br.text; g.textAlign = 'center'; g.textBaseline = 'middle';
+    fitText(g, br.name, lw_ * 0.88, band * 0.78, DISPLAY);
+    g.fillText(br.name, 0, ly + band * 0.55);
+    if (b.num) { // номер посылки крупно — по нему клиент забирает заказ
+      g.fillStyle = INK; g.textAlign = 'center';
+      fitText(g, '№' + b.num, lw_ * 0.92, (lh - band) * 0.92, DISPLAY);
+      g.fillText('№' + b.num, 0, ly + band + (lh - band) * 0.54);
+      g.strokeStyle = INK; g.lineWidth = lw * 0.5; g.strokeRect(lx, ly, lw_, lh);
+      g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(X0, T, 3*u*scale, h);
+      g.strokeStyle = INK; g.lineWidth = lw; g.strokeRect(X0, T, w, h);
+      g.restore(); return;
+    }
+    g.fillStyle = '#222';
+    const bcW = lw_ * 0.48, bcY = ly + band + lh*0.08, bcH = lh - band - lh*0.16;
+    let bx = lx + lw_*0.06;
+    const bars = [2,1,1,3,1,2,1,1,2,3,1,1,2,1,3,1,2];
+    const unit = bcW / bars.reduce((a, v) => a + v + 1, 0);
+    bars.forEach((v, i) => { if (i % 2 === 0) g.fillRect(bx, bcY, v * unit, bcH); bx += (v + 1) * unit; });
+    g.fillStyle = INK; g.textAlign = 'right';
+    fitText(g, b.kg + ' кг', lw_ * 0.4, bcH * 1.05, '600 Rubik,sans-serif');
+    g.fillText(b.kg + ' кг', lx + lw_ - lw_*0.05, bcY + bcH/2 + 0.5*u);
+  }
+  g.strokeStyle = INK; g.lineWidth = lw * 0.5; g.strokeRect(lx, ly, lw_, lh);
+  g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(X0, T, 3*u*scale, h);
+  g.strokeStyle = INK; g.lineWidth = lw; g.strokeRect(X0, T, w, h);
+  g.restore();
+}
+
+// ===== Конвейер и люк =====
+function mirrorFor(g, belt){ if (belt.dir < 0) { g.translate(W, 0); g.scale(-1, 1); } }
+function drawBelt(g, idx){
+  const belt = belts[idx], lw = 3*u, y = belt.y, bh_ = L.beltH;
+  const x0 = L.hatchW - 6*u, x1 = W - 28*u, len = x1 - x0 + bh_/2;
+  g.save(); mirrorFor(g, belt);
+  if (idx === 0) {
+    for (let x = x0 + 30*u; x < x1 - 10*u; x += 92*u) {
+      const lg = g.createLinearGradient(x, 0, x + 9*u, 0); lg.addColorStop(0, '#5d666e'); lg.addColorStop(1, '#3d444a');
+      g.fillStyle = lg; g.fillRect(x, y + bh_, 9*u, L.floorY + 14*u - y - bh_);
+      g.strokeStyle = INK; g.lineWidth = lw*0.7; g.strokeRect(x, y + bh_, 9*u, L.floorY + 14*u - y - bh_);
+      g.fillStyle = '#2b2f33'; rr(g, x - 6*u, L.floorY + 12*u, 21*u, 6*u, 2*u); g.fill(); g.stroke();
+    }
+  } else {
+    for (let x = x0 + 40*u; x < x1 - 10*u; x += 110*u) {
+      g.fillStyle = '#5d666e'; g.fillRect(x, L.hud, 5*u, y - L.hud);
+      g.strokeStyle = INK; g.lineWidth = lw*0.5; g.strokeRect(x, L.hud, 5*u, y - L.hud);
+    }
+  }
+  const bg_ = g.createLinearGradient(0, y, 0, y + bh_);
+  bg_.addColorStop(0, '#8693a0'); bg_.addColorStop(0.5, '#6b7883'); bg_.addColorStop(1, '#4e5962');
+  g.fillStyle = bg_; rr(g, x0, y, len, bh_, bh_/2); g.fill();
+  g.strokeStyle = INK; g.lineWidth = lw; g.stroke();
+  g.fillStyle = '#2f363c';
+  for (let x = x0 + 12*u; x < x1; x += 34*u) { g.beginPath(); g.arc(x + 17*u, y + bh_*0.25, 1.6*u, 0, Math.PI*2); g.fill(); }
+  g.fillStyle = '#26282c'; rr(g, x0, y - 7*u, len, 9*u, 4*u); g.fill();
+  g.save(); g.beginPath(); g.rect(x0, y - 7*u, len, 9*u); g.clip();
+  g.strokeStyle = 'rgba(255,255,255,.2)'; g.lineWidth = 2*u;
+  const step = 18*u, off = beltPos[idx] % step;
+  for (let x = x0 - step + off; x < x1 + bh_; x += step) { g.beginPath(); g.moveTo(x, y - 7*u); g.lineTo(x - 4*u, y + 2*u); g.stroke(); }
+  g.fillStyle = 'rgba(255,255,255,.08)'; g.fillRect(x0, y - 7*u, len, 2.5*u);
+  g.restore();
+  g.strokeStyle = INK; g.lineWidth = lw*0.8; rr(g, x0, y - 7*u, len, 9*u, 4*u); g.stroke();
+  const r = 7*u;
+  for (let x = x0 + 22*u; x < x1; x += 34*u) {
+    const rg = g.createRadialGradient(x - 2*u, y + bh_*0.55 - 2*u, 1*u, x, y + bh_*0.55, r);
+    rg.addColorStop(0, '#eef2f4'); rg.addColorStop(1, '#9aa5ad');
+    g.fillStyle = rg; g.beginPath(); g.arc(x, y + bh_*0.55, r, 0, Math.PI*2); g.fill();
+    g.strokeStyle = INK; g.lineWidth = lw*0.6; g.stroke();
+    const a = beltPos[idx] / r;
+    g.beginPath(); g.moveTo(x - Math.cos(a)*r*0.7, y + bh_*0.55 - Math.sin(a)*r*0.7); g.lineTo(x + Math.cos(a)*r*0.7, y + bh_*0.55 + Math.sin(a)*r*0.7); g.stroke();
+  }
+  g.fillStyle = '#ffd21f'; const ax = x1 - 30*u, ay = y + bh_*0.55;
+  g.beginPath(); g.moveTo(ax - 8*u, ay - 6*u); g.lineTo(ax + 4*u, ay); g.lineTo(ax - 8*u, ay + 6*u); g.closePath(); g.fill();
+  g.strokeStyle = INK; g.lineWidth = lw*0.5; g.stroke();
+  g.restore();
+}
+function drawHatch(g, idx){
+  const belt = belts[idx], lw = 3*u, top = belt.y - 112*u, bot = belt.y + L.beltH, w = L.hatchW;
+  g.save(); mirrorFor(g, belt);
+  g.fillStyle = '#16181c'; g.fillRect(0, top, w, bot - top);
+  for (let i = 0; i < 5; i++) {
+    const sx = i * w/5 + 1*u;
+    let sway = 0;
+    for (const b of boxes) {
+      if (b.belt !== idx || b.state !== 'belt') continue;
+      const lx = belt.dir > 0 ? b.x : W - b.x;
+      if (lx - bw(b)/2 < w && lx + bw(b)/2 > sx) sway = 5*u;
+    }
+    g.fillStyle = 'rgba(160,205,222,.42)';
+    g.beginPath(); g.moveTo(sx, top + 14*u); g.lineTo(sx + w/5 - 2*u, top + 14*u);
+    g.lineTo(sx + w/5 - 2*u + sway, belt.y - 4*u); g.lineTo(sx + sway, belt.y - 4*u); g.fill();
+  }
+  g.fillStyle = '#ffd21f'; g.fillRect(0, top, w + 8*u, 14*u);
+  g.save(); g.beginPath(); g.rect(0, top, w + 8*u, 14*u); g.clip(); g.fillStyle = '#2b2420';
+  for (let x = -10*u; x < w + 20*u; x += 16*u) { g.beginPath(); g.moveTo(x, top + 14*u); g.lineTo(x + 8*u, top); g.lineTo(x + 14*u, top); g.lineTo(x + 6*u, top + 14*u); g.fill(); }
+  g.restore();
+  g.fillStyle = '#ffd21f'; g.fillRect(w, top, 8*u, bot - top);
+  g.strokeStyle = INK; g.lineWidth = lw;
+  g.strokeRect(-4, top, w + 8*u + 4, 14*u); g.strokeRect(w, top, 8*u, bot - top);
+  g.restore();
+  const label = idx === 0 ? 'ПРИЁМ' : 'КРУПНЫЕ';
+  const sx = belt.dir > 0 ? 6*u : W - w - 6*u;
+  g.fillStyle = '#fff4e2'; rr(g, sx, top - 24*u, w, 19*u, 4*u); g.fill();
+  g.strokeStyle = INK; g.lineWidth = lw*0.7; g.stroke();
+  g.fillStyle = INK; g.textAlign = 'center'; g.textBaseline = 'middle';
+  fitText(g, label, w - 10*u, 12*u, DISPLAY); g.fillText(label, sx + w/2, top - 14*u);
+}
+
+// ===== Пустое место, пока тележку разгружают =====
+function drawCartSlot(g, c, left){
+  const br = CONFIG.brands[c.brand], x = c.x + 2*u, y = L.cartTop + 6*u, w = c.w - 4*u, h = c.h - 12*u;
+  g.save();
+  g.fillStyle = 'rgba(20,24,28,.28)'; rr(g, x, y, w, h, 8*u); g.fill();
+  g.setLineDash([6*u, 5*u]); g.strokeStyle = br.color; g.lineWidth = 3*u; rr(g, x, y, w, h, 8*u); g.stroke();
+  g.setLineDash([]);
+  const cx = x + w/2, cy = y + h*0.42, r = Math.min(w, h) * 0.24;
+  const frac = clamp(left / c.away, 0, 1);
+  g.fillStyle = 'rgba(28,22,16,.75)'; g.beginPath(); g.arc(cx, cy, r + 4*u, 0, Math.PI*2); g.fill();
+  g.strokeStyle = br.color; g.lineWidth = 5*u; g.lineCap = 'round';
+  g.beginPath(); g.arc(cx, cy, r, -Math.PI/2, -Math.PI/2 + Math.PI*2*frac); g.stroke(); g.lineCap = 'butt';
+  g.fillStyle = '#fff4e2'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  fitText(g, Math.ceil(left) + ' с', r * 1.5, r * 0.8, DISPLAY); g.fillText(Math.ceil(left) + ' с', cx, cy + 1*u);
+  g.fillStyle = '#fff4e2'; fitText(g, br.name, w * 0.86, 13*u, DISPLAY); g.fillText(br.name, cx, y + h*0.75);
+  const note = c.refill ? 'новая поставка' : 'разгружают · ' + Math.round(c.sendKg) + ' кг';
+  g.fillStyle = '#c9b59c'; fitText(g, note, w * 0.9, 10*u, '600 Rubik,sans-serif');
+  g.fillText(note, cx, y + h*0.9);
+  g.restore();
+}
+
+// ===== Тележка (роллет-контейнер) =====
+function drawCart(g, c, highlight){
+  const br = CONFIG.brands[c.brand], lw = 3*u;
+  let oy = c.dragY || 0;
+  if (c.leaving) {
+    const off = c.h + 60*u, backAt = 0.45 + c.away;
+    if (c.lt < 0.45) oy = lerp(oy, off, ease(c.lt / 0.45));
+    else if (c.lt < backAt) { drawCartSlot(g, c, backAt - c.lt); return; }
+    else oy = off * (1 - ease((c.lt - backAt) / 0.45));
+  }
+  const fill = cartFill(c);
+  const full = fill >= CONFIG.fullAt && !c.leaving && def.mode === 'sort';
+  const ox = Math.sin(clock * 48) * c.no * 9*u + (full ? Math.sin(clock * 9) * 1.2*u : 0);
+  oy += -Math.abs(Math.sin(clock * 26)) * c.bump * 7*u;
+  const rot = Math.sin(clock * 22) * c.bump * 0.05 + (full ? Math.sin(clock * 7) * 0.015 : 0);
+  const d = Math.min(10*u, c.w * 0.1), dy = 7*u;
+  const x = c.x, w = c.w - d, h = c.h, top = L.cartTop;
+  const cageT = top + 4*u, cageB = top + h - 18*u;
+  g.save();
+  g.translate(x + c.w/2 + ox, top + h + oy); g.rotate(rot); g.translate(-(x + c.w/2), -(top + h));
+  g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(x + c.w/2, top + h - 2*u, c.w*0.52, 7*u, 0, 0, Math.PI*2); g.fill();
+  const wheel = (wx, wy, r, dark) => {
+    g.fillStyle = '#5d666e'; g.fillRect(wx - 2*u, wy - r - 6*u, 4*u, 6*u);
+    g.fillStyle = dark ? '#1f2225' : '#2b2f33'; g.beginPath(); g.arc(wx, wy, r, 0, Math.PI*2); g.fill();
+    g.strokeStyle = INK; g.lineWidth = lw*0.6; g.stroke();
+    g.fillStyle = '#c3cbd1'; g.beginPath(); g.arc(wx, wy, r*0.35, 0, Math.PI*2); g.fill();
+  };
+  wheel(x + d + 10*u, top + h - 11*u - dy, 6*u, true);
+  wheel(x + d + w - 10*u, top + h - 11*u - dy, 6*u, true);
+  g.fillStyle = '#323a41'; g.fillRect(x + d, cageT - dy, w, cageB - cageT);
+  g.strokeStyle = 'rgba(200,210,216,.25)'; g.lineWidth = 1.3*u;
+  for (let gx = x + d; gx <= x + d + w; gx += 9*u) { g.beginPath(); g.moveTo(gx, cageT - dy); g.lineTo(gx, cageB - dy); g.stroke(); }
+  for (let gy = cageT - dy; gy <= cageB - dy; gy += 9*u) { g.beginPath(); g.moveTo(x + d, gy); g.lineTo(x + d + w, gy); g.stroke(); }
+  g.beginPath(); g.moveTo(x, cageB); g.lineTo(x + d, cageB - dy); g.lineTo(x + d + w, cageB - dy); g.lineTo(x + w, cageB); g.closePath();
+  g.fillStyle = '#5a646c'; g.fill(); g.strokeStyle = INK; g.lineWidth = lw*0.6; g.stroke();
+  // посылки внутри — в том же масштабе, что и на ленте, уложены стопкой
+  const items = c.items.slice().sort((a, b) => a.y - b.y);
+  for (const it of items) drawBox(g, it, x + it.cx, cageB - it.y - it.h/2, inS());
+  g.strokeStyle = 'rgba(210,218,224,.55)'; g.lineWidth = 1.3*u;
+  for (let gy = cageT; gy <= cageB; gy += 9*u) { g.beginPath(); g.moveTo(x + w, gy); g.lineTo(x + w + d, gy - dy); g.stroke(); }
+  g.strokeStyle = INK; g.lineWidth = lw*0.6;
+  g.beginPath(); g.moveTo(x + w, cageT); g.lineTo(x + w + d, cageT - dy); g.lineTo(x + w + d, cageB - dy); g.stroke();
+  g.beginPath(); g.moveTo(x, cageT); g.lineTo(x + d, cageT - dy); g.lineTo(x + w + d, cageT - dy); g.stroke();
+  g.strokeStyle = 'rgba(214,222,228,.7)'; g.lineWidth = 1.4*u;
+  for (let gx = x; gx <= x + w; gx += 9*u) { g.beginPath(); g.moveTo(gx, cageT + (cageB - cageT)*0.35); g.lineTo(gx, cageB); g.stroke(); }
+  for (let gy = cageT; gy <= cageB; gy += 9*u) { g.beginPath(); g.moveTo(x, gy); g.lineTo(x + w, gy); g.stroke(); }
+  const bar = (bx, by, bw_, bh__) => {
+    const mg = g.createLinearGradient(bx, by, bx + bw_, by + bh__);
+    mg.addColorStop(0, '#c8d0d6'); mg.addColorStop(1, '#7d8890');
+    g.fillStyle = mg; g.fillRect(bx, by, bw_, bh__); g.strokeStyle = INK; g.lineWidth = lw*0.6; g.strokeRect(bx, by, bw_, bh__);
+  };
+  bar(x - 2*u, cageT - 3*u, 6*u, cageB - cageT + 6*u);
+  bar(x + w - 4*u, cageT - 3*u, 6*u, cageB - cageT + 6*u);
+  bar(x - 2*u, cageT - 3*u, w + 4*u, 5*u);
+  bar(x - 2*u, cageB - 2*u, w + 4*u, 6*u);
+  if (highlight) { g.strokeStyle = br.color; g.lineWidth = 5*u; g.strokeRect(x - 5*u, cageT - dy - 5*u, w + d + 10*u, cageB - cageT + dy + 10*u); }
+  const pw = w * 0.8, ph = (cageB - cageT) * 0.25, px = x + (w - pw)/2, py = cageB - ph - 4*u;
+  g.fillStyle = br.color; rr(g, px, py, pw, ph, 4*u); g.fill(); g.strokeStyle = INK; g.lineWidth = lw*0.8; g.stroke();
+  g.fillStyle = 'rgba(255,255,255,.18)'; g.fillRect(px + 3*u, py + 2*u, pw - 6*u, ph*0.2);
+  g.fillStyle = br.text; g.textAlign = 'center'; g.textBaseline = 'middle';
+  fitText(g, br.name, pw * 0.86, ph * 0.66, DISPLAY); g.fillText(br.name, x + w/2, py + ph*0.55);
+  // шкала заполнения по высоте
+  const fr = clamp(fill / CONFIG.overflowAt, 0, 1);
+  g.fillStyle = "rgba(20,24,28,.6)"; rr(g, px, py - 10*u, pw, 6*u, 3*u); g.fill();
+  if (fr > 0) {
+    g.fillStyle = fill >= CONFIG.fullAt ? '#ff4d3d' : fill >= 0.6 ? '#ff8a2a' : '#ffd21f';
+    rr(g, px, py - 10*u, Math.max(6*u, pw * fr), 6*u, 3*u); g.fill();
+  }
+  g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1*u;
+  const mk = px + pw * (CONFIG.fullAt / CONFIG.overflowAt);
+  g.beginPath(); g.moveTo(mk, py - 11*u); g.lineTo(mk, py - 3*u); g.stroke();
+  wheel(x + 10*u, top + h - 9*u, 8*u, false);
+  wheel(x + w - 10*u, top + h - 9*u, 8*u, false);
+  g.restore();
+  // подсказка «отправь»
+  if (full && Math.sin(clock * 8) > -0.3) {
+    const cx = x + c.w/2, ty = top - 26*u + Math.sin(clock * 6) * 2*u;
+    g.fillStyle = '#ff4d3d'; rr(g, cx - c.w*0.46, ty - 11*u, c.w*0.92, 22*u, 6*u); g.fill();
+    g.strokeStyle = INK; g.lineWidth = 2*u; g.stroke();
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    fitText(g, 'СМАХНИ ↓', c.w*0.82, 12*u, DISPLAY); g.fillText('СМАХНИ ↓', cx, ty + 1*u);
+  }
+}
+
+// ===== Щиток, отвёртка, частицы =====
+function drawPanel(g){
+  const P = L.panel, x = P.x - P.w/2, y = P.y, lw = 2.5*u;
+  g.fillStyle = '#4a525a'; g.fillRect(P.x - 3*u, belts[0].y + L.beltH, 6*u, y - belts[0].y - L.beltH);
+  g.strokeStyle = INK; g.lineWidth = lw*0.6; g.strokeRect(P.x - 3*u, belts[0].y + L.beltH, 6*u, y - belts[0].y - L.beltH);
+  const mg = g.createLinearGradient(x, y, x + P.w, y + P.h);
+  mg.addColorStop(0, '#9aa5ad'); mg.addColorStop(1, '#66727b');
+  g.fillStyle = mg; rr(g, x, y, P.w, P.h, 4*u); g.fill(); g.strokeStyle = INK; g.lineWidth = lw; g.stroke();
+  g.fillStyle = '#ffd21f'; g.beginPath(); g.moveTo(x + 6*u, y + 6*u); g.lineTo(x + 14*u, y + 6*u); g.lineTo(x + 10*u, y + 13*u); g.closePath(); g.fill();
+  const on = broken.active ? Math.sin(clock * 12) > 0 : true;
+  g.fillStyle = broken.active ? (on ? '#ff3b2a' : '#5a1a14') : '#46d35a';
+  g.beginPath(); g.arc(x + P.w - 9*u, y + 9*u, 4*u, 0, Math.PI*2); g.fill(); g.lineWidth = lw*0.6; g.stroke();
+  if (broken.active && on) { g.fillStyle = 'rgba(255,60,40,.25)'; g.beginPath(); g.arc(x + P.w - 9*u, y + 9*u, 10*u, 0, Math.PI*2); g.fill(); }
+  // винт, куда вставлять отвёртку
+  const sx = P.x, sy = y + P.h*0.62;
+  g.fillStyle = '#d8dfe4'; g.beginPath(); g.arc(sx, sy, 7*u, 0, Math.PI*2); g.fill(); g.lineWidth = lw*0.7; g.stroke();
+  g.save(); g.translate(sx, sy); g.rotate(tool.state === 'using' ? tool.t * 8 : 0.6);
+  g.strokeStyle = INK; g.lineWidth = 2*u; g.beginPath(); g.moveTo(-4.5*u, 0); g.lineTo(4.5*u, 0); g.stroke();
+  g.restore();
+  if (broken.active) {
+    g.save(); g.setLineDash([5*u, 4*u]); g.lineDashOffset = -clock * 30;
+    g.strokeStyle = '#ffd21f'; g.lineWidth = 2.5*u; rr(g, x - 6*u, y - 6*u, P.w + 12*u, P.h + 12*u, 7*u); g.stroke();
+    g.restore();
+  }
+}
+function drawTool(g){
+  if (tool.state === 'hidden') return;
+  const len = 46*u;
+  if (tool.state === 'shelf') {
+    const p = (Math.sin(clock * 4) + 1) / 2;
+    g.fillStyle = `rgba(255,226,110,${0.18 + 0.32*p})`;
+    g.beginPath(); g.ellipse(tool.x + len*0.08, tool.y, len*0.72, 14*u, 0, 0, Math.PI*2); g.fill();
+  }
+  g.save(); g.translate(tool.x, tool.y); g.rotate(tool.ang);
+  g.strokeStyle = INK; g.lineWidth = 2*u; g.lineJoin = 'round';
+  g.fillStyle = '#dfe5e9'; g.fillRect(0, -2.5*u, len*0.5, 5*u); g.strokeRect(0, -2.5*u, len*0.5, 5*u);
+  g.fillStyle = '#9aa5ad'; g.beginPath(); g.moveTo(len*0.5, -2.5*u); g.lineTo(len*0.58, -1*u); g.lineTo(len*0.58, 1*u); g.lineTo(len*0.5, 2.5*u); g.closePath(); g.fill(); g.stroke();
+  g.fillStyle = '#e8402a'; rr(g, -len*0.42, -6*u, len*0.44, 12*u, 5*u); g.fill(); g.stroke();
+  g.fillStyle = '#ffd21f'; g.fillRect(-len*0.3, -6*u, 3.5*u, 12*u); g.fillRect(-len*0.16, -6*u, 3.5*u, 12*u);
+  g.fillStyle = 'rgba(255,255,255,.4)'; g.fillRect(-len*0.38, -4.5*u, len*0.36, 2.2*u);
+  g.restore();
+  if (tool.state === 'shelf') { // искорка
+    const s = (0.5 + 0.5 * Math.sin(clock * 5)) * 7*u, sx = tool.x + len*0.3, sy = tool.y - 12*u;
+    g.fillStyle = '#fff7c2'; g.beginPath();
+    g.moveTo(sx, sy - s); g.lineTo(sx + s*0.25, sy - s*0.25); g.lineTo(sx + s, sy); g.lineTo(sx + s*0.25, sy + s*0.25);
+    g.lineTo(sx, sy + s); g.lineTo(sx - s*0.25, sy + s*0.25); g.lineTo(sx - s, sy); g.lineTo(sx - s*0.25, sy - s*0.25); g.closePath(); g.fill();
+  }
+}
+function drawWrench(g, hp){
+  if (hp.state === 'gone') return;
+  const len = 44*u;
+  if (hp.state === 'shelf') {
+    const p = (Math.sin(clock * 4 + hp.ph) + 1) / 2;
+    g.fillStyle = `rgba(127,196,255,${0.15 + 0.3*p})`;
+    g.beginPath(); g.ellipse(hp.x, hp.y, len*0.72, 13*u, 0, 0, Math.PI*2); g.fill();
+  }
+  g.save(); g.translate(hp.x, hp.y); g.rotate(hp.ang);
+  g.strokeStyle = INK; g.lineWidth = 2*u; g.lineJoin = 'round';
+  const mg = g.createLinearGradient(0, -5*u, 0, 5*u); mg.addColorStop(0, '#eef2f4'); mg.addColorStop(1, '#9aa5ad');
+  g.fillStyle = mg; rr(g, -len*0.42, -3.5*u, len*0.72, 7*u, 3*u); g.fill(); g.stroke();
+  g.fillStyle = '#2a6fd6'; rr(g, -len*0.48, -5*u, len*0.4, 10*u, 4*u); g.fill(); g.stroke();
+  g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(-len*0.44, -3.5*u, len*0.32, 2*u);
+  // голова ключа с зевом
+  g.fillStyle = mg; g.beginPath(); g.arc(len*0.34, 0, 9*u, 0, Math.PI*2); g.fill(); g.stroke();
+  g.fillStyle = '#323a41'; g.beginPath(); g.moveTo(len*0.34, 0); g.lineTo(len*0.34 + 11*u, -5*u); g.lineTo(len*0.34 + 11*u, 5*u); g.closePath(); g.fill();
+  g.beginPath(); g.arc(len*0.34, 0, 3.2*u, 0, Math.PI*2); g.fill();
+  g.restore();
+}
+function drawParticles(g){
+  for (const p of particles) {
+    const a = clamp(p.life / p.max, 0, 1);
+    if (p.kind === 'smoke') { g.fillStyle = `rgba(70,72,76,${0.45*a})`; g.beginPath(); g.arc(p.x, p.y, p.r, 0, Math.PI*2); g.fill(); }
+    else { g.strokeStyle = `rgba(255,214,90,${a})`; g.lineWidth = 2*u; g.beginPath(); g.moveTo(p.x, p.y); g.lineTo(p.x - p.vx*0.03, p.y - p.vy*0.03); g.stroke(); }
+  }
+}
+function drawBreakLabel(g){
+  if (!broken.active || mode !== 'play') return;
+  const y = belts[0].y - 104*u, w = Math.min(W - 40*u, 300*u), x = W/2 - w/2;
+  g.fillStyle = 'rgba(120,20,12,.9)'; rr(g, x, y - 20*u, w, 40*u, 9*u); g.fill();
+  g.strokeStyle = '#ffd21f'; g.lineWidth = 2.5*u; g.stroke();
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#ffd21f'; fitText(g, 'КОНВЕЙЕР СЛОМАН · ' + Math.ceil(broken.t) + ' сек', w - 20*u, 15*u, DISPLAY);
+  g.fillText('КОНВЕЙЕР СЛОМАН · ' + Math.ceil(broken.t) + ' сек', W/2, y - 6*u);
+  g.fillStyle = '#fff4e2'; fitText(g, 'Найди отвёртку на стеллаже и тащи на щиток', w - 20*u, 11*u, '600 Rubik,sans-serif');
+  g.fillText('Найди отвёртку на стеллаже и тащи на щиток', W/2, y + 10*u);
+}
+
+function heart(g, x, y, s, full){
+  g.beginPath();
+  g.moveTo(x, y + s*0.3);
+  g.bezierCurveTo(x, y, x - s*0.5, y, x - s*0.5, y + s*0.3);
+  g.bezierCurveTo(x - s*0.5, y + s*0.6, x, y + s*0.8, x, y + s);
+  g.bezierCurveTo(x, y + s*0.8, x + s*0.5, y + s*0.6, x + s*0.5, y + s*0.3);
+  g.bezierCurveTo(x + s*0.5, y, x, y, x, y + s*0.3);
+  g.fillStyle = full ? '#ff4d3d' : 'rgba(255,255,255,.18)'; g.fill();
+  g.strokeStyle = INK; g.lineWidth = 2.5*u; g.stroke();
+}
+
+function drawHud(g){
+  g.fillStyle = 'rgba(28,22,16,.82)'; g.fillRect(0, 0, W, L.hud);
+  // полоска оставшегося времени
+  const p = mode === 'play' ? clamp(1 - elapsed / def.time, 0, 1) : 1;
+  g.fillStyle = '#3a2f26'; g.fillRect(0, L.hud - 5*u, W, 5*u);
+  g.fillStyle = def.boss ? '#ff5a3c' : '#ffd21f'; g.fillRect(0, L.hud - 5*u, W * p, 5*u);
+  for (let i = 0; i < CONFIG.lives; i++) heart(g, 22*u + i * 28*u, 15*u, 22*u, i < lives);
+  g.textBaseline = 'middle';
+  g.fillStyle = '#fff4e2'; g.textAlign = 'right';
+  g.font = `${26*u}px ${DISPLAY}`; fitText(g, def.mode === 'pickup' ? score + ' ₽' : String(score), 110*u, 26*u, DISPLAY);
+  g.fillText(def.mode === 'pickup' ? score + ' ₽' : String(score), W - 14*u, L.hud/2 - 3*u);
+  g.textAlign = 'center';
+  const left = Math.max(0, Math.ceil(def.time - elapsed));
+  const m = Math.floor(left / 60), s = left % 60;
+  g.font = `600 ${11*u}px Rubik,sans-serif`; g.fillStyle = def.boss ? '#ff8a6a' : '#c9b59c';
+  g.fillText(def.boss ? `УРОВЕНЬ ${def.n} · БОСС` : `УРОВЕНЬ ${def.n}`, W/2, L.hud/2 - 12*u);
+  g.font = `${19*u}px ${DISPLAY}`; g.fillStyle = left <= 10 && mode === 'play' ? '#ff8a2a' : '#fff4e2';
+  g.fillText(m + ':' + String(s).padStart(2, '0'), W/2, L.hud/2 + 6*u);
+  const mult = Math.min(4, 1 + Math.floor(streak / 5));
+  if (mult > 1) {
+    g.fillStyle = '#ff8a2a'; rr(g, W - 140*u, L.hud/2 - 13*u, 40*u, 20*u, 6*u); g.fill();
+    g.strokeStyle = INK; g.lineWidth = 2*u; g.stroke();
+    g.fillStyle = INK; g.font = `${13*u}px ${DISPLAY}`; g.fillText('×' + mult, W - 120*u, L.hud/2 - 2*u);
+  }
+  if (slowT > 0 && mode === 'play') { // плашка замедления под шапкой
+    const bwid = 170*u, bx = W/2 - bwid/2, by = L.hud + 4*u;
+    g.fillStyle = 'rgba(20,50,90,.88)'; rr(g, bx, by, bwid, 20*u, 6*u); g.fill();
+    g.strokeStyle = '#7fc4ff'; g.lineWidth = 2*u; g.stroke();
+    g.fillStyle = 'rgba(127,196,255,.35)'; rr(g, bx, by, bwid * clamp(slowT / CONFIG.slowTime, 0, 1), 20*u, 6*u); g.fill();
+    g.fillStyle = '#e8f4ff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = `${12*u}px ${DISPLAY}`; g.fillText('ЛЕНТА МЕДЛЕННЕЕ · ' + Math.ceil(slowT) + ' с', W/2, by + 10.5*u);
+  }
+  // сколько ключей осталось на стеллажах
+  const keys = helpers.filter(h => h.state !== 'gone').length;
+  if (keys && mode === 'play') {
+    g.fillStyle = '#7fc4ff'; g.textAlign = 'left'; g.textBaseline = 'middle';
+    g.font = `600 ${10*u}px Rubik,sans-serif`; g.fillText('ключей: ' + keys, 14*u, L.hud - 11*u);
+  }
+}
+
+function drawIntro(g){
+  if (mode !== 'play' || elapsed > 3) return;
+  const a = elapsed < 0.3 ? elapsed / 0.3 : elapsed > 2.4 ? 1 - (elapsed - 2.4) / 0.6 : 1;
+  const y = def.mode === 'pickup' ? L.counterY + 90*u : def.belt2 ? (belts[0].y + belts[1].y) / 2 - 20*u : belts[0].y - 140*u;
+  g.save(); g.globalAlpha = clamp(a, 0, 1);
+  g.fillStyle = 'rgba(28,22,16,.88)'; rr(g, 24*u, y - 34*u, W - 48*u, 72*u, 12*u); g.fill();
+  g.strokeStyle = def.boss ? '#ff5a3c' : '#ffd21f'; g.lineWidth = 3*u; g.stroke();
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = def.boss ? '#ff8a6a' : '#ffd21f'; g.font = `${24*u}px ${DISPLAY}`;
+  g.fillText(def.boss ? `УРОВЕНЬ ${def.n} · БОСС` : `УРОВЕНЬ ${def.n}`, W/2, y - 8*u);
+  g.fillStyle = '#fff4e2'; fitText(g, def.twist, W - 80*u, 14*u, '600 Rubik,sans-serif');
+  g.fillText(def.twist, W/2, y + 18*u);
+  g.restore();
+}
+
+function render(){
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (bgCanvas) ctx.drawImage(bgCanvas, 0, 0);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.save();
+  if (shake > 0) ctx.translate(Math.sin(clock * 70) * shake * 6*u, Math.cos(clock * 55) * shake * 4*u);
+  const onBelt = b => b.state === 'belt' || b.state === 'lifting' || b.state === 'returning';
+  if (def.mode === 'pickup') {
+    for (const cu of customers) drawCustomer(ctx, cu);
+    drawFittingRoom(ctx);
+    drawCounter(ctx);
+    for (const cu of customers) drawHands(ctx, cu);
+    drawTable(ctx);
+    drawReturnBin(ctx);
+    for (const cu of customers) drawBubble(ctx, cu);
+  } else {
+  for (const hp of helpers) if (hp.state === 'shelf') drawWrench(ctx, hp);
+  if (tool.state === 'shelf') drawTool(ctx);
+  if (def.belt2) {
+    ctx.save();
+    ctx.translate((1 - ease(Math.min(1, elapsed / 0.9))) * W, 0);
+    drawBelt(ctx, 1);
+    for (const b of boxes) if (b.belt === 1 && onBelt(b)) drawBox(ctx, b, b.x, b.y, 1, true);
+    drawHatch(ctx, 1);
+    ctx.restore();
+  }
+  drawBelt(ctx, 0);
+  for (const b of boxes) if (b.belt === 0 && onBelt(b)) drawBox(ctx, b, b.x, b.y, 1, true);
+  drawHatch(ctx, 0);
+  drawPanel(ctx);
+  drawParticles(ctx);
+  }
+  const target = held && held.state === 'held' && def.mode === 'sort' ? cartUnder(held) : null;
+  for (const c of carts) drawCart(ctx, c, c === target);
+  drawBreakLabel(ctx);
+  for (const b of boxes) if (!onBelt(b)) drawBox(ctx, b, b.x, b.y, b.state === 'dropping' ? lerp(1, inS(), b.t) : (b.sc || 1));
+  if (tool.state !== 'shelf') drawTool(ctx);
+  for (const hp of helpers) if (hp.state !== 'shelf') drawWrench(ctx, hp);
+  if (held && held.state === 'lifting') {
+    const S = CONFIG.sizes[held.s], w = bw(held), p = clamp(held.lift / S.lift, 0, 1);
+    const x = held.x - w/2, y = held.y - bh(held)/2 - 22*u;
+    ctx.fillStyle = 'rgba(28,22,16,.75)'; rr(ctx, x, y, w, 9*u, 4*u); ctx.fill();
+    ctx.fillStyle = '#ff8a2a'; rr(ctx, x, y, Math.max(9*u, w * p), 9*u, 4*u); ctx.fill();
+    ctx.strokeStyle = INK; ctx.lineWidth = 2*u; rr(ctx, x, y, w, 9*u, 4*u); ctx.stroke();
+    ctx.fillStyle = '#fff4e2'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.font = `600 ${11*u}px Rubik,sans-serif`; ctx.fillText('поднимаю…', held.x, y - 2*u);
+  }
+  for (const p of popups) {
+    const a = 1 - Math.max(0, p.t - 0.6) / 0.5;
+    ctx.globalAlpha = clamp(a, 0, 1);
+    ctx.font = `${20*u}px ${DISPLAY}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const y = p.y - ease(Math.min(1, p.t)) * 40*u;
+    const tx = clamp(p.x, 90*u, W - 90*u);
+    ctx.lineWidth = 5*u; ctx.strokeStyle = INK; ctx.strokeText(p.text, tx, y);
+    ctx.fillStyle = p.color; ctx.fillText(p.text, tx, y);
+    ctx.globalAlpha = 1;
+  }
+  if (def.mode === 'pickup') drawReturnTags(ctx);
+  drawIntro(ctx);
+  ctx.restore();
+  drawHud(ctx);
+  if (flash > 0) {
+    const g = ctx.createRadialGradient(W/2, H/2, H*0.2, W/2, H/2, H*0.75);
+    g.addColorStop(0, 'rgba(255,40,20,0)'); g.addColorStop(1, `rgba(255,40,20,${0.45*flash})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// ===== Уровни и экраны =====
+const $ = id => document.getElementById(id);
+function setupLevel(n){
+  def = levelDef(n);
+  carts = CONFIG.brands.slice(0, def.carts).map((b, i) => ({ brand: i, slot: i, x: 0, tx: 0, w: 0, h: 0, items: [], bump: 0, no: 0, leaving: false, lt: 0 }));
+  table.items = []; binCount = 0;
+  customers = []; usedNums = new Set(); reservedNums = new Set(); served = 0; angryCount = 0; arriveTimer = 1.2;
+  resize();   // раскладка и фон зависят от локации
+}
+function startLevel(n){
+  ensureAudio();
+  tone(880, 1180, 0.12, 'square', 0.06); tone(1180, 1180, 0.18, 'square', 0.06, 0.13); // свисток: смена началась
+  setupLevel(n);
+  boxes = []; popups = []; held = null;
+  score = 0; lives = CONFIG.lives; streak = 0; sorted = 0; dropped = 0; elapsed = 0;
+  speed = def.speedStart; spawnTimer = 0; spawnTimer2 = 0; shuffleTimer = def.shuffle; overTimer = -1;
+  beltPos = [0, 0];
+  broken = { active: false, t: 0, alarm: 0, puff: 0 }; tool.state = 'hidden'; heldHelper = null; slowT = 0;
+  placeHelpers(def.mode === 'sort' ? CONFIG.helpersMin + ((Math.random() * (CONFIG.helpersMax - CONFIG.helpersMin + 1)) | 0) : 0);
+  if (def.mode === 'pickup') for (const c of carts) fillCart(c, def.boxesPerCart); toolHeld = false; cartDrag = null; particles = [];
+  breakQueue = !def.breaks ? []
+             : def.time <= 60 ? [rand(18, 32)]
+             : def.breaks === 1 ? [rand(30, def.time - 35)] : [rand(25, 50), rand(70, def.time - 30)];
+  $('menu').hidden = true; $('result').hidden = true; $('lvInfo').hidden = true;
+  mode = 'play';
+}
+function finishLevel(won){
+  mode = 'result'; held = null; cartDrag = null; toolHeld = false; heldHelper = null; slowT = 0;
+  broken.active = false; tool.state = 'hidden'; updateHum();
+  const n = def.n;
+  const stars = won ? lives : 0;
+  $('resLabel').textContent = def.boss ? `Уровень ${n} · босс` : `Уровень ${n}`;
+  $('resStars').innerHTML = [0,1,2].map(i => `<span class="${i < stars ? '' : 'off'}">★</span>`).join('');
+  if (won) {
+    sfx.win();
+    progress.stars[n] = Math.max(progress.stars[n] || 0, stars);
+    progress.best[n] = Math.max(progress.best[n] || 0, score);
+    progress.unlocked = Math.min(MAX_LEVEL, Math.max(progress.unlocked, n + 1));
+    saveProgress();
+    $('resTitle').textContent = stars === 3 ? 'Идеальная смена!' : 'Смена пройдена';
+    const tail = stars === 3 ? 'Ни одной ошибки.' : `Ошибок: ${CONFIG.lives - lives}. Пройди без ошибок — получишь 3 звезды.`;
+    $('resInfo').textContent = (def.mode === 'pickup' ? `Выдано посылок: ${served}. Заработано: ${score} ₽. ` : `Посылок: ${sorted}. Очки: ${score}. `) + tail;
+    if (n >= MAX_LEVEL) {
+      $('resTitle').textContent = 'Игра пройдена!';
+      $('resInfo').textContent += ' Все 50 уровней позади — можно переиграть на 3 звезды.';
+      $('nextBtn').hidden = true;
+    } else {
+      const nl = locOf(n + 1);
+      $('nextBtn').textContent = nl !== def.loc ? `Дальше: ${nl.name}` : `Играть уровень ${n + 1}`;
+      $('nextBtn').hidden = false;
+    }
+  } else {
+    sfx.over();
+    $('resTitle').textContent = 'Смена сорвана';
+    $('resInfo').textContent = `Сердечки закончились за ${Math.floor(elapsed/60)}:${String(Math.floor(elapsed%60)).padStart(2,'0')}. ` +
+      (def.mode === 'pickup' ? `Выдано посылок: ${served}.` : `Посылок: ${sorted}.`) + ' Попробуй ещё раз.';
+    $('nextBtn').hidden = true;
+  }
+  $('result').hidden = false;
+}
+function renderMenu(){
+  const cur = progress.unlocked;
+  $('playBtn').textContent = `Играть уровень ${cur}`;
+  let html = '';
+  for (const loc of LOCATIONS) {
+    const open = cur >= loc.from;
+    html += `<div class="locHead${open ? '' : ' shut'}" style="--lc:${loc.color}"><span>${loc.icon}</span><span class="lhName">${loc.name}<small>${loc.mode === 'sort' ? 'склад · конвейер' : 'выдача · клиенты'}${open ? '' : ' · с уровня ' + loc.from}</small></span></div>`;
+    html += '<div class="levels">';
+    for (let n = loc.from; n <= loc.to; n++) {
+      const st = progress.stars[n] || 0, locked = n > cur, boss = n % 5 === 0;
+      html += `<button type="button" class="lv${boss ? ' boss' : ''}${n === cur ? ' cur' : ''}" data-lv="${n}" ${locked ? 'disabled' : ''} aria-label="Уровень ${n}">` +
+              `${locked ? '🔒 ' + n : n}<small>${boss && !st ? 'БОСС' : locked ? '&nbsp;' : (st ? '★'.repeat(st) + '☆'.repeat(3 - st) : '☆☆☆')}</small></button>`;
+    }
+    html += '</div>';
+  }
+  $('levels').innerHTML = html;
+}
+let infoLevel = 1;
+function showLevelInfo(n){
+  infoLevel = n;
+  const d = levelDef(n), loc = d.loc, st = progress.stars[n] || 0;
+  $('infoLabel').textContent = `Уровень ${n} из ${MAX_LEVEL}` + (d.boss ? ' · босс · 1 минута' : ' · 2 минуты');
+  $('infoIcon').textContent = loc.icon;
+  $('infoTitle').textContent = loc.name;
+  $('infoCard').style.setProperty('--lc', loc.color);
+  $('infoDesc').textContent = loc.desc;
+  $('infoTwist').textContent = d.twist;
+  $('infoStars').innerHTML = [0,1,2].map(i => `<span class="${i < st ? '' : 'off'}">★</span>`).join('');
+  $('infoBest').textContent = progress.best[n] ? (d.mode === 'pickup' ? `Лучший результат: ${progress.best[n]} ₽` : `Лучший результат: ${progress.best[n]} очков`) : 'Ещё не пройден';
+  $('lvInfo').hidden = false;
+}
+function showMenu(){
+  mode = 'menu'; held = null;
+  renderMenu();
+  $('result').hidden = true; $('lvInfo').hidden = true; $('menu').hidden = false;
+  setupLevel(1); boxes = []; demo();
+}
+$('playBtn').addEventListener('click', () => showLevelInfo(progress.unlocked));
+$('levels').addEventListener('click', e => { const b = e.target.closest('[data-lv]'); if (b && !b.disabled) showLevelInfo(+b.dataset.lv); });
+$('infoPlay').addEventListener('click', () => startLevel(infoLevel));
+$('infoBack').addEventListener('click', () => { $('lvInfo').hidden = true; });
+$('nextBtn').addEventListener('click', () => { $('result').hidden = true; showLevelInfo(def.n + 1); });
+$('retryBtn').addEventListener('click', () => startLevel(def.n));
+$('menuBtn').addEventListener('click', showMenu);
+const muteBtn = $('muteBtn');
+muteBtn.addEventListener('click', () => {
+  muted = !muted; muteBtn.textContent = muted ? '🔇 Без звука' : '🔊 Звук';
+  if (!muted) { ensureAudio(); tone(660, 990, 0.12, 'square', 0.06); }
+  try { if (htmlAudio) muted ? htmlAudio.pause() : htmlAudio.play().catch(() => {}); } catch (e) {}
+});
+// звук разблокируется первым касанием в любом месте
+['pointerdown', 'touchend', 'click', 'keydown'].forEach(ev => document.addEventListener(ev, () => ensureAudio(), { capture: true, passive: true }));
+document.addEventListener('visibilitychange', () => { if (!document.hidden) ensureAudio(); });
+
+function demo(){
+  elapsed = 0; lives = CONFIG.lives; score = 0;
+  for (const [s, brand, fx] of [[0,0,0.3],[2,1,0.55],[1,2,0.8]]) {
+    const b = { id: fx * 10, s, brand, belt: 0, kg: [2,7,18][s], x: W*fx, y: 0, vx:0, vy:0, ang:0, va:0, state:'belt', t:0, lift:0, alpha:1 };
+    b.y = belts[0].y - bh(b)/2; boxes.push(b);
+  }
+  const fillDemo = (c, list) => { if (!c) return; for (const sz of list) addItemAt(c, sz, c.brand, 3, landSpot(c, sz, c.w/2)); };
+  fillDemo(carts[0], [1, 0]); fillDemo(carts[2], [2, 0]);
+}
+
+let last = performance.now();
+function frame(now){
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  update(dt); render();
+  requestAnimationFrame(frame);
+}
+new ResizeObserver(resize).observe(stage);
+setupLevel(1);
+renderMenu(); demo();
+requestAnimationFrame(frame);
+</script>
+
+<script>if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));</script>
+</body>
+</html>
